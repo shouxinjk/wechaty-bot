@@ -35,6 +35,7 @@
 import { Wechaty } from 'wechaty'
 
 const bot = Wechaty.instance()
+bot
 .on('friend',   './listeners/on-friend')
 .on('login',    './listeners/on-login')
 .on('message',  './listeners/on-message')
