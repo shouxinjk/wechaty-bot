@@ -4,6 +4,10 @@ import md5 from "md5"
 import crypto from "crypto"
 import request from "request"
 import { FileBox }  from 'file-box'
+
+import fs from 'fs'
+import path from 'path'
+
 // 配置文件
 import config from "../../config/index.js"
 const name = config.name
@@ -34,18 +38,20 @@ const name = config.name
             ##MMMMMMMMMMMMMMMMMMMMMM##      微信机器人名为: [${user.payload.name}] 已经扫码登录成功了。\n\n
             `)
 
+            //对于未退出重新启动的情况，需要先根据原botid更新后端
+            //尝试读取本地缓存的botId，同时将原botId、当前botId及二维码链接推送到后台，通知重新扫码
+            let file = config.localFile;
+            fs.readFile(file, function(err, data){syncBot(bot,user,data)}); 
+
+            //装载对应的达人，同步broker信息
+            checkBrokerByNickname(bot,user);
+
             //TODO 加载群任务，并实例化
             //scheduleSendMessage(bot,user);
-            scheduleSendGroupRead(bot,user);
-
-            //登录后将bot的id同步到后台：注意，此处不严格。后端达人数据为openid及nickname，此处为wechatid及nickname，只能通过nickname进行匹配
-            await syncBotStatus(bot,user);
-
-            //TODO：加载系统任务：能够定期轮询（如每半小时），查询托管群及任务详情。如有变化则取消所有任务后重新加载
-            //当前可通过达人退出登录后重新登录完成任务重新加载。无需自动任务。作为一项使用提示。
+            //scheduleSendGroupRead(bot,user);
 
             //加载群任务，并实例化
-            await loadJobs(bot,user);               
+            await loadWxGroupJobsByNickname(bot,user);               
         } catch (error) {
             console.log(`onLogin: ${error}`)
         }
@@ -72,45 +78,73 @@ function scheduleSendGroupRead(bot,user){
     schedule.scheduleJob('0 */10 * * * ?', function(){sendGroupRead(topic,bot)}); //send every 5 min  
 }
 
-/**
- * 提交登录机器人账号信息到后端进行同步
- */
-async function syncBotStatus(bot,user) {
-    try {
-        let resp = await fetch(
-            config.sx_api+'/wx/wxBot/rest/sync',
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    nickname:user.name,
-                    wechatId:user.id,
-                    status:"active"
-                }), 
-            }
-        )
-        let resp_json = await resp.json()
-        if (resp.success) {
-            console.log("sync bot succeed.");
-        } else {
-            console.log("sync bot failed.");
-        }
-    } catch (err) {
-       console.log("sync bot error.");
-    }
+//根据nickname获取达人信息
+function checkBrokerByNickname(bot, user) {
+    var nickname = user.payload.name;
+    console.log("try to check broker by nickname. [nickname]",nickname);
+    return new Promise((resolve, reject) => {
+        let url = config.sx_api+"/mod/broker/rest/brokerByNickname?nickname="+encodeURIComponent(nickname)
+        request({
+              url: url,
+              method: 'GET'
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got  broker info.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  if(res.status){
+                    //更新本地激活码，便于后续识别
+                    var broker = res.data;
+                    config.broker = res.data;//将broker写入缓存
+                    if(broker.token && broker.token.trim().length>0){
+                        console.log("got token.",broker.token);
+                        config.magicCode = broker.token;
+                    }else{
+                        console.log("no token found.ignore.[nickname]",nickname);
+                    }
+                  }else{
+                    console.log("no tasks found by nickname.[nickname]",nickname);
+                  }
+                } else {
+                  console.log("error while checking wxgroup tasks by nickname.[nickname]",nickname);
+                }
+          })
+    })
 }
 
 /**
- * 根据登录用户ID查询托管的微信群，并加载自动任务
- * 采用POST方法，返回JSON：{success:true/false,data:[{roomId:xxx,topic:xxx,cron:xxx,task:xxx}]}
+ * 根据用户昵称查询所有托管微信群任务。 注意：当前是通过昵称查询，需要用户在各个群内保持昵称不变
+ * 查询结果直接返回任务列表，如果没有激活任务则返回空列表
+ * 查询完成后立即schedule
  */
-async function loadJobs(bot,user) {
-    let searchURL = config.sx_api+'/wx/wxGroup/rest/groups'
-    let postBody = {
-        "wechatId": user.id
-    }
-    let okCallback = scheduleJobs
-    let resText = await fetchRemoteAPI(searchURL, postBody, okCallback, bot)
-    return resText
+function loadWxGroupJobsByNickname(bot, user) {
+    var nickname = user.payload.name;
+    console.log("try to check broker by nickname. [nickname]",nickname);
+    return new Promise((resolve, reject) => {
+        let url = config.sx_api+"/wx/wxGroupTask/rest/byNickname?nickname="+encodeURIComponent(nickname)
+        request({
+              url: url,
+              method: 'GET'
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got wxgroup tasks.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  if(res && res.length>0){
+                    //逐条schedule
+                    for(let k=0;k<res.length;k++){
+                      scheduleJobs(bot, res[k]);
+                    }
+                  }else{
+                    console.log("no tasks found by nickname.[nickname]",nickname);
+                  }
+                } else {
+                  console.log("error while checking wxgroup tasks by nickname.[nickname]",nickname);
+                }
+          })
+    })
 }
 
 /**
@@ -120,29 +154,35 @@ async function loadJobs(bot,user) {
  * data：web请求返回的数据
  */
 async function scheduleJobs(bot,jsondata) {
-    if (jsondata.data.length === 0) {
-        console.log("没有待加载任务");
+    var job  = jsondata;
+    var topic = job.wxgroup.name;
+    var tags = job.tags;
+    if(!tags || tags.trim().length==0)tags="*";//默认查询所有
+    //加载群聊
+    var roomId = job.wxgroup.gid;//默认直接从后端获取微信群ID
+    if(!roomId){//如果没有则从前端roomList查询获取
+        roomId = config.room.roomList[topic];
+    }
+    if(!roomId){
+        console.log("cannot find room id by topic. ignore.[topic]",topic);
         return;
     }
-    for (let i = 0; i < jsondata.data.length; i++) {
-        var job  = jsondata.data[i];
-        //加载群聊
-        const room = bot.Room.load(job.roomId)
-        await room.sync()
-        //分别加载任务
-        if(job.task == "sendItem"){//根据关键词逐条发送
-            schedule.scheduleJob(job.cron, function(){sendItem(job.topic, bot)}); //推送商品：标题、来源、价格、首图、链接。注意：链接只能发裸链
-        }else if(job.task == "sendFeature"){//发送主推(feature)商品
-            schedule.scheduleJob(job.cron, function(){sendFeature(job.topic, bot)}); //推送主推商品：能够将最近添加的feature商品推送到
-        }else if(job.task == "sendGroupRead"){
-            schedule.scheduleJob(job.cron, function(){sendGroupRead(job.topic, bot)}); //推送互阅开车信息
-        }else if(job.task == "sendPaidRead"){
-            schedule.scheduleJob(job.cron, function(){sendPaidRead(job.topic, bot)}); //推送有偿阅读链接：查询金币文章，并推送到指定群
-        }else{
-            //do nothing
-            console.log("Unkown job.");
-        }
-        
+    const room = bot.Room.load(roomId) //注意：这里需要后端同步群聊ID。可以在发送激活码时补充gid信息。另一种方案是在前端查询roomList得到。
+    await room.sync()
+    //初始化rooms配置
+    if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+    //分别加载任务
+    if(job.type == "sendItem"){//根据关键词逐条发送
+        schedule.scheduleJob(job.cron, function(){sendItem(topic, tags, bot)}); //推送商品：标题、来源、价格、首图、链接。注意：链接只能发裸链
+    }else if(job.type == "sendFeature"){//发送主推(feature)商品
+        schedule.scheduleJob(job.cron, function(){sendFeature(topic, bot)}); //推送主推商品：能够将最近添加的feature商品推送到
+    }else if(job.type == "sendGroupRead"){
+        schedule.scheduleJob(job.cron, function(){sendGroupRead(topic, bot)}); //推送互阅开车信息
+    }else if(job.type == "sendPaidRead"){
+        schedule.scheduleJob(job.cron, function(){sendPaidRead(topic, bot)}); //推送有偿阅读链接：查询金币文章，并推送到指定群
+    }else{
+        //do nothing
+        console.log("Unkown job.");
     }
 }
 
@@ -153,11 +193,15 @@ async function sendMessage(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending daily to room ' + room.id)
     //发送文字
-    let txtMsg = "该交周报了，没交的话，我隔5分钟来问一次";
-    room.say(txtMsg)
-    //发送图片
-    let imageMsg = FileBox.fromUrl('https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png')
-    room.say(imageMsg)    
+    try{
+        let txtMsg = "该交周报了，没交的话，我隔5分钟来问一次";
+        room.say(txtMsg)
+        //发送图片
+        let imageMsg = FileBox.fromUrl('https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png')
+        room.say(imageMsg)   
+    }catch(err){
+      console.log("error while send msg",err);
+    }  
 }
 
 /**
@@ -167,9 +211,13 @@ async function sendMessage(topic,bot) {
 async function sendText(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending daily to room ' + room.id)
-    //let dailyText = await getDaily()
-    let dailyText = "该交周报了，没交的话，我隔5分钟来问一次";
-    room.say(dailyText)
+    try{
+        //let dailyText = await getDaily()
+        let dailyText = "该交周报了，没交的话，我隔5分钟来问一次";
+        room.say(dailyText)
+    }catch(err){
+      console.log("error while send text",err);
+    }     
 }
 
 /**
@@ -180,14 +228,18 @@ async function sendText(topic,bot) {
 async function sendUrl(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending daily to room ' + room.id)
-    //let dailyText = await getDaily()
-    let dailyText = new bot.UrlLink({
-      description: '周报填写链接，没交的赶快填写',
-      thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png',
-      title: '交周报',
-      url: 'https://www.baidu.com',
-    });
-    room.say(dailyText)
+    try{
+        //let dailyText = await getDaily()
+        let dailyText = new bot.UrlLink({
+          description: '周报填写链接，没交的赶快填写',
+          thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png',
+          title: '交周报',
+          url: 'https://www.baidu.com',
+        });
+        room.say(dailyText)
+    }catch(err){
+      console.log("error while send url",err);
+    }         
 }
 
 /**
@@ -216,23 +268,22 @@ async function sendImage(topic,bot) {
  * send item
  * 根据关键字搜索商品，并推送
  */
-var offset = 0;
-async function sendItem(topic,bot) {
+async function sendItem(topic, keywords, bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending item to room ' + room.id)
+    console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room.id)
     //根据设置的关键字构建query
     let query = {
-                      "from":offset,
+                      "from":config.rooms[topic].offset,
                       "size":3,      
                       "query": {
                         "query_string": {
-                          "query": "*",
+                          "query": keywords,
                           "default_field": "full_text"
                         }
                       }
                     }    
     //发送文字
-    let res = await requestItem(query,room)
+    let res = await requestItem(topic,query,room)
     room.say(res)    
 }
 
@@ -242,7 +293,7 @@ async function sendItem(topic,bot) {
  * 参数：
  * queryJson: 组织好的查询条件
  */
-function requestItem(queryJson, room) {
+function requestItem(topic,queryJson, room) {
   console.log("try search. [query]",queryJson);
   return new Promise((resolve, reject) => {
     let url = config.es_api
@@ -321,17 +372,17 @@ function requestItem(queryJson, room) {
                       }  
 
                       //修改下标
-                      offset ++;                    
+                      config.rooms[topic].offset = config.rooms[topic].offset+1;
 
                     }
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
                     resolve(send)
                   } else {
-                    offset=0;//重新发起搜索
+                    config.rooms[topic].offset =0;//重新发起搜索
                   }
                 } else {
-                  offset=0;//重新发起搜索
+                  config.rooms[topic].offset =0;//重新发起搜索
                 }
           })
   })
@@ -343,7 +394,6 @@ function requestItem(queryJson, room) {
  * 查询主推商品，通过featuredTimestamp记录更新的时间戳
  */
 var featuredTimestamp = new Date();//默认为当前时间，重新启动后从当前时间开始推送
-var featuredOffset = 0;
 async function sendFeature(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending featured item to room ' + room.id)
@@ -365,7 +415,7 @@ async function sendFeature(topic,bot) {
  
     //根据设置的关键字构建query
     let query = {
-              "from":featuredOffset,
+              "from":config.rooms[topic].featuredOffset ,
               "size":1,     
               "query": {
                 "bool": {
@@ -391,7 +441,7 @@ async function sendFeature(topic,bot) {
                 ]
             }    
     //发送文字
-    let res = await requestFeature(query,room)
+    let res = await requestFeature(topic,query,room)
     if(res && res.length>"好物推荐：".length)
         room.say(res)    
 }
@@ -402,7 +452,7 @@ async function sendFeature(topic,bot) {
  * 参数：
  * queryJson: 组织好的查询条件
  */
-function requestFeature(queryJson, room) {
+function requestFeature(topic,queryJson, room) {
   console.log("try search. [query]",queryJson);
   return new Promise((resolve, reject) => {
     let url = config.es_api
@@ -481,17 +531,17 @@ function requestFeature(queryJson, room) {
                       }  
 
                       //修改下标
-                      featuredOffset ++;                    
+                      config.rooms[topic].featuredOffset = config.rooms[topic].featuredOffset + 1;                    
 
                     }
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
                     resolve(send)
                   } else {
-                    featuredOffset=0;//重新发起搜索
+                    config.rooms[topic].featuredOffset=0;//重新发起搜索
                   }
                 } else {
-                  featuredOffset=0;//重新发起搜索
+                  config.rooms[topic].featuredOffset=0;//重新发起搜索
                 }
           })
   })
@@ -503,17 +553,17 @@ async function sendGroupRead(topic, bot){
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending group read msg to room ' + room.id)   
 
-    let res = requstGroupRead()
+    let res = requstGroupRead(topic,room)
     if(res && res.length>0)
         room.say(res) 
 }
 
 
 //返回互阅列表：直接发送文字及链接
-function requstGroupRead(){  
+function requstGroupRead(topic,room){  
   //需要检查是否有尚未结束互阅车
-  if(config.grouping && config.grouping.timeFrom && config.grouping.duration ){
-    var waitMillis = new Date().getTime() - (config.grouping.timeFrom.getTime()+config.grouping.duration);
+  if(config.rooms[topic]&&config.rooms[topic].grouping && config.rooms[topic].grouping.timeFrom && config.rooms[topic].grouping.duration ){
+    var waitMillis = new Date().getTime() - (config.rooms[topic].grouping.timeFrom.getTime()+config.rooms[topic].grouping.duration);
     if( waitMillis < 0 ){
       //return "当前车次尚未结束，请加入或"+(Math.floor(-1*waitMillis/1000/60))+"分钟后开始";
       return "";
@@ -548,17 +598,120 @@ function requstGroupRead(){
   saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);  
 
   //设置本地互阅会话
-  config.grouping.timeFrom = new Date();
-  config.grouping.duration = 10*60*1000;
-  config.grouping.code = groupingCode;
-  config.grouping.page = 0;
-  config.grouping.articles = {};
-  config.grouping.name = now.getHours()+"点"+now.getMinutes()+"分列表";
+  if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+  config.rooms[topic].grouping.timeFrom = new Date();
+  config.rooms[topic].grouping.duration = 10*60*1000;
+  config.rooms[topic].grouping.code = groupingCode;
+  config.rooms[topic].grouping.page = 0;
+  config.rooms[topic].grouping.articles = {};
+  config.rooms[topic].grouping.name = now.getHours()+"点"+now.getMinutes()+"分列表";
+
+  //设置任务，2分钟后发送列表
+  setTimeout(function(){
+    requestGroupingArticles(topic, room);
+  },config.rooms[topic].grouping.timeout);
 
   //直接返回文字信息即可
   //TODO 先发送一个通知图片
-  var txt = "请将文章加入列表👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟后自动出合集";
+  var txt = "🚚整点班车，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟后自动出合集";
   return txt;
+}
+
+
+//根据grouping code分页加载文章列表，最多发4车
+function requestGroupingArticles(topic, room) {
+  //获取topic
+  console.log("try request grouping articles. [groupingCode]",config.rooms[topic].grouping.code);
+  return new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=25&openid=&publisherOpenid=&code="+config.rooms[topic].grouping.code
+    //**
+    let postBody = {
+                      "from":0,
+                      "to":25, //需要列表进行控制，不能超过20条，此处默认为25条 
+                      "code":config.rooms[topic].grouping.code,
+                      "openid": "",//ignore
+                      "publisherOpenid":""//ignore
+                    }
+    request({
+              url: url,
+              method: 'GET',
+              //json: postBody
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got search result.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  if (res && res.length>0) {
+                    let send = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读，并按以下格式报数：\nA 11 22 33 44 55";//res.data.reply
+                    //按照pageSize分箱
+                    var boxIndex = 0;
+                    for (let i = 0; i < res.length; i++) {//按照pageSize分箱
+                      boxIndex = Math.floor(i/config.rooms[topic].grouping.pageSize);
+                      if(!config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]]){
+                        config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]] = [];//空白列表
+                      }
+                      var sublist = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]];
+                      sublist.push(res[i]);
+                      console.log("assemble box "+boxIndex,sublist);
+                      config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]] = sublist;
+                    }
+                    // 逐节推送
+                    for(let k=0;k<config.rooms[topic].grouping.names.length&&k<=boxIndex;k++){
+                      let boxMsg = ""+config.rooms[topic].grouping.names[k];
+                      let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
+                      console.log("got box "+k,articles);
+                      for(let j=0;j<articles.length;j++){
+                        boxMsg+="\n👉"+articles[j].title;
+                        boxMsg+="\n🔗"+articles[j].url;
+                      }
+                      room.say(boxMsg);
+                    }
+
+                    //设置定时任务推送报告链接，默认按照timeout设置发送
+                    setTimeout(function(){
+                      sendGroupReport(topic, room);
+                    },config.rooms[topic].grouping.timeout*2);                      
+
+                    // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
+                    send = send.replace(/Smile/g, name)
+                    resolve(send)
+                  } else {
+                    resolve("一篇文章都没有，稍后再来~~")
+                  }
+                } else {
+                  resolve("啊哦，好像出错了，稍等再来~~");
+                }
+          })
+  })
+}
+
+//推送互阅报告：直接发送文字及链接
+function sendGroupReport(topic, room){
+  //需要检查是否有尚未结束互阅车，如果没有就直接结束
+  if(!config.rooms[topic] || !config.rooms[topic].grouping || !config.rooms[topic].grouping.code){
+    return;
+  }
+
+  var now = new Date();
+
+  //将链接保存为短链
+  let eventId = crypto.randomUUID();
+  let itemKey = "page_"+eventId;
+  let fromBroker = "system";//TODO 需要替换为当前达人
+  let fromUser = "bot";//固定为机器人
+  let channel = "wechat";
+
+  let url =  config.sx_wx_api+"/publisher/report-grouping.html?code="+config.rooms[topic].grouping.code+"&groupingName="+config.rooms[topic].grouping.name;
+  let shortCode = generateShortCode(url);
+  saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);  
+
+  //清空本地缓存：暂时不清空，避免推送报告后不能在群里报数
+  //config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+
+  //直接返回文字信息即可
+  var txt = "📈点击查看报告👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
+  room.say(txt);
 }
 
 //返回互阅列表：直接发送文字及链接
@@ -566,19 +719,19 @@ async function sendPaidRead(topic, bot){
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending paid read msg to room ' + room.id)   
 
-    let res = await requestPaidRead()
+    let res = await requestPaidRead(topic)
     if(res && res.length>0)
         room.say(res) 
 }
 
 //发送有偿阅读列表。需要检查是否有其他互阅。
-function requestPaidRead(){
+function requestPaidRead(topic){
   //需要检查是否有尚未结束互阅车
-  if(config.grouping && config.grouping.timeFrom && config.grouping.duration ){
-    var waitMillis = new Date().getTime() - (config.gourping.timeFrom.getTime()+config.grouping.duration);
-    if( waitMillis > 60*1000 ){
-      //return "当前车次尚未结束，请加入或"+(waitMillis/1000/60)+"分钟后开始";
-      return ""
+  if(config.rooms[topic]&&config.rooms[topic].grouping && config.rooms[topic].grouping.timeFrom && config.rooms[topic].grouping.duration ){
+    var waitMillis = new Date().getTime() - (config.rooms[topic].grouping.timeFrom.getTime()+config.rooms[topic].grouping.duration);
+    if( waitMillis < 0 ){
+      //return "当前车次尚未结束，请加入或"+(Math.floor(-1*waitMillis/1000/60))+"分钟后开始";
+      return "";
     }
   }
   //需要检查时间离下一个整点是否足够
@@ -612,12 +765,13 @@ function requestPaidRead(){
   //**/
 
   //设置本地互阅会话
-  config.grouping.timeFrom = new Date();
-  config.grouping.duration = 5*60*1000;
-  config.grouping.code = groupingCode;
-  config.grouping.page = 0;
-  config.grouping.articles = {};
-  config.grouping.name = now.getHours()+"点"+now.getMinutes()+"分文章列表";
+  if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+  config.rooms[topic].grouping.timeFrom = new Date();
+  config.rooms[topic].grouping.duration = 10*60*1000;
+  config.rooms[topic].grouping.code = groupingCode;
+  config.rooms[topic].grouping.page = 0;
+  config.rooms[topic].grouping.articles = {};
+  config.rooms[topic].grouping.name = now.getHours()+"点"+now.getMinutes()+"分列表";
 
   //TODO：查询金币文章列表并推送
 
@@ -663,6 +817,46 @@ function saveShortCode(eventId, itemKey, fromBroker, fromUser, channel, longUrl,
                 console.log("===short code saved.===\n",body);
           })
   })
+}
+
+/**
+ * 提交登录机器人到后端进行同步
+ * 参数包括：
+ * oldBotId: 之前启动的botId。可以为空。如果则新建bot
+ * botId: 当前botId
+ * qrcodeUrl：二维码地址
+ */
+async function syncBot(bot,user,data) {
+    try{
+        data = JSON.parse(data);
+    }catch(err){
+        console.log("failed parse local file content.");
+    }    
+    console.log("try to sync bot info. ",data);
+    let url = config.sx_api+'/wx/wxBot/rest/sync'
+    request({
+              url: url,
+              method: 'POST',
+              json:{
+                    oldBotId:data&&data.botId?data.botId:"",
+                    botId:bot.id,
+                    status:"active",
+                }
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("sync bot succeed.",body);
+                  //let res = JSON.parse(body)
+                } else {
+                  console.log("sync bot error.",error)
+                }
+          })
+
+    //将当前登录信息及wechatyid写入本地文件，在重启或重新扫码时能够更新wechatyid
+    let file = config.localFile;
+    let dataNew = {botId: bot.id}
+    // 异步写入数据到文件
+    fs.writeFile(file, JSON.stringify(dataNew), { encoding: 'utf8' }, err => {});    
 }
 
 /**
