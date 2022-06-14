@@ -19,8 +19,22 @@ const roomList = config.room.roomList
 // 消息监听回调
 export const onMessage = bot => {
   return async function onMessage(msg) {
-    // 判断消息来自自己，直接return
-    if (msg.self()) return
+    // 判断消息来自自己，仅响应激活码
+    if (msg.self()){
+        if(msg.room() && config.magicCode && config.magicCode.trim().length>0 && msg.text() === config.magicCode){
+          console.log("got magic code. activate wx group.");
+          const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>
+
+          //把room加入本地列表
+          config.room.roomList[topic]=msg.room().id;
+          //把room提交到后端，等待设置客群及自动任务
+          syncRoom(topic, msg.room().id);
+          //TODO 重新schedule所有任务：在停止群托管、激活群托管、修改任务规则等均可以发送激活码重新装载任务
+        }else{
+          //do nothing
+          //console.log("自说自话，且不是激活码，直接忽略");
+        }      
+    }
 
     //仅处理文本消息
     if (msg.type() == bot.Message.Type.Text) {//打印到控制台
@@ -76,18 +90,20 @@ export const onMessage = bot => {
             let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
             let res = await requestRobot(sendText,room, null)
             msg.say(res, msg.talker())
-          }else if(config.grouping.code && config.grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
+          }else if(config.rooms[topic] && config.rooms[topic].grouping.code && config.rooms[topic].grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
             const regex = /^\s?[a-zA-Z]\s+\d+/;//报数格式必须是： A 1 2 3 4 5 
             if(regex.test(msg.text())){//是报数，则予以响应
               var boxName = msg.text().match(/[a-zA-Z]{1}/g)[0].toUpperCase();//匹配得到分箱
               var readCounts = msg.text().match(/\d+/g);//匹配得到所有报数
               console.log("got numbers.",boxName, readCounts);
-              if(config.grouping.articles[boxName] && config.grouping.articles[boxName].length>0 && 
-                readCounts.length>0 && config.grouping.articles[boxName].length == readCounts.length ){
-                checkBrokerByNickname(msg,config.grouping.articles[boxName],readCounts);
-              }else if(config.grouping.articles[boxName] && config.grouping.articles[boxName].length>0 && 
-                readCounts.length>0 && config.grouping.articles[boxName].length != readCounts.length ){ //只有部分数据,提示补全
-                room.say("报数与文章数不匹配。车厢"+boxName +"共有"+config.grouping.articles[boxName].length+"篇文章，但报数为" +readCounts.length+"组", msg.talker())
+              if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
+                readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length == readCounts.length ){
+                checkBrokerByNickname(msg,config.rooms[topic].grouping.articles[boxName],readCounts);
+              }else if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
+                readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length != readCounts.length ){ //只有部分数据,提示补全
+                room.say("报数与文章数不匹配。车厢"+boxName +"共有"+config.rooms[topic].grouping.articles[boxName].length+"篇文章，但报数为" +readCounts.length+"组", msg.talker())
+              }else if(!config.rooms[topic].grouping.articles[boxName] ){ //车厢号错误
+                room.say("车厢号错误。需要按照车厢报数，如：A 11 22 33 44 55", msg.talker())
               }else{
                 //do nothing
                 room.say("请检查输入，需要包含车厢号及报数，并用空格分隔。如：A 11 22 33 44 55", msg.talker())
@@ -97,8 +113,20 @@ export const onMessage = bot => {
 
           }          
         }
-      }else{//非托管群仅响应 激活码 并需要判断是否为群主
+      }else{//非托管群仅响应。当前不做响应。对于共享群的情况，可以响应激活码
         console.log("非托管群消息，直接忽略");
+        /**
+        if(msg.room() && config.magicCode && config.magicCode.trim().length>0 && msg.text() === config.magicCode){
+          console.log("got magic code. activate wx group.");
+          //把room加入本地列表
+          config.room.roomList[topic]=msg.room().id;
+          //把room提交到后端，等待设置客群及自动任务
+          syncRoom(topic, msg.room().id);
+          //TODO 重新schedule所有任务：在停止群托管、激活群托管、修改任务规则等均可以发送激活码重新装载任务
+        }else{
+          console.log("非托管群消息，且不是激活码，直接忽略");
+        }
+        //**/
       }
 
     }else{//一对一单聊：直接关键字回复
@@ -134,10 +162,14 @@ export const onMessage = bot => {
 async function sendMessage2Room(room, text, imgUrl) {
     console.log('Sending message to room ' + room.id)
     //发送图片
-    let imageMsg = FileBox.fromUrl(imgUrl)
-    root.say(imageMsg) 
-    //发送文字
-    room.say(text)
+    try{
+      let imageMsg = FileBox.fromUrl(imgUrl)
+      root.say(imageMsg) 
+      //发送文字
+      room.say(text)
+    }catch(err){
+      console.log("error while send msg 2 room",err);
+    }  
 }
 
 /**
@@ -147,10 +179,14 @@ async function sendMessage2Room(room, text, imgUrl) {
 async function sendMessage2Person(msg, text, imgUrl) {
     console.log('Sending message to person ' +msg)
     //发送图片
-    let imageMsg = FileBox.fromUrl(imgUrl)
-    msg.say(imageMsg,msg.talker()) 
-    //发送文字
-    msg.say(text,msg.talker())
+    try{
+      let imageMsg = FileBox.fromUrl(imgUrl)
+      msg.say(imageMsg,msg.talker()) 
+      //发送文字
+      msg.say(text,msg.talker())
+    }catch(err){
+      console.log("error while send msg 2 person",err);
+    }    
 }
 
 /**
@@ -159,8 +195,12 @@ async function sendMessage2Person(msg, text, imgUrl) {
 async function sendImage2Room(room, imgUrl) {
     console.log('Sending msg to room ' + room.id)
     //发送图片
-    let imageMsg = FileBox.fromUrl(imgUrl)
-    room.say(imageMsg) 
+    try{
+      let imageMsg = FileBox.fromUrl(imgUrl)
+      room.say(imageMsg) 
+    }catch(err){
+      console.log("error while send image 2 room",err);
+    }
 }
 
 /**
@@ -169,8 +209,13 @@ async function sendImage2Room(room, imgUrl) {
 async function sendImage2Person(msg, imgUrl) {
     console.log('Sending msg to person ' + msg)
     //发送图片
-    let imageMsg = FileBox.fromUrl(imgUrl)
-    msg.say(imageMsg, msg.talker()) 
+    try{
+      let imageMsg = FileBox.fromUrl(imgUrl)
+      msg.say(imageMsg, msg.talker())       
+    }catch(err){
+      console.log("error while send image 2 person",err);
+    }
+
 }
 
 /**
@@ -336,9 +381,11 @@ function requestRobot(keyword, room, msg) {
 
 //返回互阅列表：直接发送文字及链接
 function sendGroupRead(msg){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>
   //需要检查是否有尚未结束互阅车
-  if(config.grouping && config.grouping.timeFrom && config.grouping.duration ){
-    var waitMillis = new Date().getTime() - (config.grouping.timeFrom.getTime()+config.grouping.duration);
+  if(config.rooms[topic] && config.rooms[topic].grouping && config.rooms[topic].grouping.timeFrom && config.rooms[topic].grouping.duration ){
+    var waitMillis = new Date().getTime() - (config.rooms[topic].grouping.timeFrom.getTime()+config.rooms[topic].grouping.duration);
     if( waitMillis < 0 ){
       return "当前车次尚未结束，请加入或"+(Math.floor(-1*waitMillis/1000/60))+"分钟后开始";
     }
@@ -373,35 +420,36 @@ function sendGroupRead(msg){
   saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);  
 
   //设置本地互阅会话
-  config.grouping.timeFrom = new Date();
-  config.grouping.duration = 10*60*1000;
-  config.grouping.code = groupingCode;
-  config.grouping.page = 0;
-  config.grouping.articles = {};
-  config.grouping.name = now.getHours()+"点"+now.getMinutes()+"分列表";
+  if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+  config.rooms[topic].grouping.timeFrom = new Date();
+  config.rooms[topic].grouping.duration = 10*60*1000;
+  config.rooms[topic].grouping.code = groupingCode;
+  config.rooms[topic].grouping.page = 0;
+  config.rooms[topic].grouping.articles = {};
+  config.rooms[topic].grouping.name = now.getHours()+"点"+now.getMinutes()+"分列表";
 
   //设置任务，2分钟后发送列表
   setTimeout(function(){
     requestGroupingArticles(msg);
-  },config.grouping.timeout);
+  },config.rooms[topic].grouping.timeout);
 
   //直接返回文字信息即可
-  var txt = "班车经过，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟自动出合集";
+  var txt = "🚄快车经过，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟自动出合集";
   return txt;
 }
 
 //根据grouping code分页加载文章列表，最多发4车
-var pageName = "A B C D E".split(" ");
-var pageIndex = 0;
 function requestGroupingArticles(msg) {
-  console.log("try request grouping articles. [groupingCode]",config.grouping.code);
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
+  console.log("try request grouping articles. [groupingCode]",config.rooms[topic].grouping.code);
   return new Promise((resolve, reject) => {
-    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=25&openid=&publisherOpenid=&code="+config.grouping.code
+    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=25&openid=&publisherOpenid=&code="+config.rooms[topic].grouping.code
     //**
     let postBody = {
                       "from":0,
                       "to":25, //需要列表进行控制，不能超过20条，此处默认为25条 
-                      "code":config.grouping.code,
+                      "code":config.rooms[topic].grouping.code,
                       "openid": "",//ignore
                       "publisherOpenid":""//ignore
                     }
@@ -416,23 +464,23 @@ function requestGroupingArticles(msg) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let send = "本车共有"+(Math.floor(res.length/config.grouping.pageSize)+1)+"节，请逐节阅读，并按以下格式报数：\nA 11 22 33 44 55";//res.data.reply
+                    let send = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读，并按以下格式报数：\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
-                      boxIndex = Math.floor(i/config.grouping.pageSize);
-                      if(!config.grouping.articles[pageName[boxIndex]]){
-                        config.grouping.articles[pageName[boxIndex]] = [];//空白列表
+                      boxIndex = Math.floor(i/config.rooms[topic].grouping.pageSize);
+                      if(!config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]]){
+                        config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]] = [];//空白列表
                       }
-                      var sublist = config.grouping.articles[pageName[boxIndex]];
+                      var sublist = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]];
                       sublist.push(res[i]);
                       console.log("assemble box "+boxIndex,sublist);
-                      config.grouping.articles[pageName[boxIndex]] = sublist;
+                      config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]] = sublist;
                     }
                     // 逐节推送
-                    for(let k=0;k<pageName.length&&k<=boxIndex;k++){
-                      let boxMsg = ""+pageName[k];
-                      let articles = config.grouping.articles[pageName[k]];
+                    for(let k=0;k<config.rooms[topic].grouping.names.length&&k<=boxIndex;k++){
+                      let boxMsg = ""+config.rooms[topic].grouping.names[k];
+                      let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
                       console.log("got box "+k,articles);
                       for(let j=0;j<articles.length;j++){
                         boxMsg+="\n👉"+articles[j].title;
@@ -440,6 +488,11 @@ function requestGroupingArticles(msg) {
                       }
                       msg.say(boxMsg, msg.talker());
                     }
+
+                    //设置定时任务推送报告链接，默认按照timeout设置发送
+                    setTimeout(function(){
+                      sendGroupReport(msg);
+                    },config.rooms[topic].grouping.timeout*2);                    
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
@@ -453,6 +506,68 @@ function requestGroupingArticles(msg) {
           })
   })
 }
+
+
+//推送互阅报告：直接发送文字及链接
+function sendGroupReport(msg){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>
+  //需要检查是否有尚未结束互阅车，如果没有就直接结束
+  if(!config.rooms[topic] || !config.rooms[topic].grouping || !config.rooms[topic].grouping.code){
+    return;
+  }
+
+  var now = new Date();
+
+  //将链接保存为短链
+  let eventId = crypto.randomUUID();
+  let itemKey = "page_"+eventId;
+  let fromBroker = "system";//TODO 需要替换为当前达人
+  let fromUser = "bot";//固定为机器人
+  let channel = "wechat";
+
+  let url =  config.sx_wx_api+"/publisher/report-grouping.html?code="+config.rooms[topic].grouping.code+"&groupingName="+config.rooms[topic].grouping.name;
+  let shortCode = generateShortCode(url);
+  saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);  
+
+  //清空本地缓存：暂时不清空，避免推送报告后不能在群里报数
+  //config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+
+  //直接返回文字信息即可
+  var txt = "📈点击查看报告👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
+  msg.say(txt, msg.talker());
+}
+
+
+//将新激活的群信息同步到后端
+function syncRoom(topic, roomId) {
+  console.log("try to sync wx group. ",topic,roomId);
+  return new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxGroup/rest/sync"
+    request({
+              url: url,
+              method: 'POST',
+              json:{
+                gname:topic,
+                gid: roomId,
+                members: 1,//当前传递固定值
+                token: config.broker.token,
+                brokerId: config.broker.id
+              }
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got sync status.",body);
+                  //let res = JSON.parse(body)
+                  let res = body;
+                  console.log("sync done.");
+                } else {
+                  console.log("sync error.")
+                }
+          })
+  })
+}
+
 
 //检查提交报数用户是否为注册达人。如果未注册则直接提示注册
 //已注册则直接完成报数
@@ -477,7 +592,7 @@ function checkBrokerByNickname(msg,articles,readCounts) {
                     //逐组提交
                     for(let k=0;k<articles.length;k++){
                       //扣除阅豆并记录阅读事件
-                      costPoints(articles[k],res.data,readCounts[k]);
+                      costPoints(msg, articles[k],res.data,readCounts[k]);
                     }
                   }else{
                     resolve("啊哦，需要点击链接扫码关注哦~~")
@@ -490,7 +605,7 @@ function checkBrokerByNickname(msg,articles,readCounts) {
 }
 
 //扣除阅豆
-function costPoints(article,reader,readCount){
+function costPoints(msg, article,reader,readCount){
   console.log("try to cost points. ",article,reader,readCount);
   /*return*/ new Promise((resolve, reject) => {
     let url = config.sx_api+"/wx/wxArticle/rest/exposure"
@@ -506,9 +621,10 @@ function costPoints(article,reader,readCount){
             function(error, response, body) {
                 if (!error && response.statusCode == 200) {
                   console.log("cost points succeed.",body);
-                  let res = JSON.parse(body)
+                  //let res = JSON.parse(body)
+                  let res = body;
                   //记录到CK
-                  logPointCostEvent(article,res,reader, readCount);
+                  logPointCostEvent(msg, article,res,reader, readCount);
                 } else {
                   console.log("error while cost points",error)
                 }
@@ -517,7 +633,9 @@ function costPoints(article,reader,readCount){
 }
 
 //提交CK记录
-function logPointCostEvent(article,publisher,reader,readCount){
+function logPointCostEvent(msg, article,publisher,reader,readCount){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
   console.log("try to log point cost event. ",article,reader,readCount);
   /*return*/ new Promise((resolve, reject) => {
     let q = "insert into ilife.reads values ('"+md5(article.id+reader.openid)+"','"+
@@ -531,7 +649,7 @@ function logPointCostEvent(article,publisher,reader,readCount){
                     article.id+"','"+
                     article.title+"','"+
                     article.url+"',"+
-                    publisher.points+","+readCount+",'"+config.grouping.code+"',now())"
+                    publisher.points+","+readCount+",'"+config.rooms[topic].grouping.code+"',now())"
     let url = config.analyze_api+"?query="+encodeURIComponent(q)
     request({
               url: url,
@@ -554,9 +672,11 @@ function logPointCostEvent(article,publisher,reader,readCount){
 
 //发送有偿阅读列表。需要检查是否有其他互阅。
 function sendPaidRead(msg){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
   //需要检查是否有尚未结束互阅车
-  if(config.grouping && config.grouping.timeFrom && config.grouping.duration ){
-    var waitMillis = new Date().getTime() - (config.gourping.timeFrom.getTime()+config.grouping.duration);
+  if(config.rooms[topic] && config.rooms[topic].grouping && config.rooms[topic].grouping.timeFrom && config.rooms[topic].grouping.duration ){
+    var waitMillis = new Date().getTime() - (config.gourping.timeFrom.getTime()+config.rooms[topic].grouping.duration);
     if( waitMillis > 60*1000 ){
       return "当前车次尚未结束，请加入或"+(waitMillis/1000/60)+"分钟后开始";
     }
@@ -591,12 +711,13 @@ function sendPaidRead(msg){
   //**/
 
   //设置本地互阅会话
-  config.grouping.timeFrom = new Date();
-  config.grouping.duration = 5*60*1000;
-  config.grouping.code = groupingCode;
-  config.grouping.page = 0;
-  config.grouping.articles = {};
-  config.grouping.name = now.getHours()+"点"+now.getMinutes()+"分文章列表";
+  if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+  config.rooms[topic].grouping.timeFrom = new Date();
+  config.rooms[topic].grouping.duration = 5*60*1000;
+  config.rooms[topic].grouping.code = groupingCode;
+  config.rooms[topic].grouping.page = 0;
+  config.rooms[topic].grouping.articles = {};
+  config.rooms[topic].grouping.name = now.getHours()+"点"+now.getMinutes()+"分文章列表";
 
   //TODO：查询金币文章列表并推送
 
