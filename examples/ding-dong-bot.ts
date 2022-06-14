@@ -13,7 +13,7 @@ import {
   ScanStatus,
   WechatyBuilder,
   log,
-  UrlLink
+  UrlLink,
 }                  from 'wechaty'
 
 import qrcodeTerminal from 'qrcode-terminal'
@@ -68,7 +68,7 @@ bot.on('logout',  onLogout(bot))
 bot.on('message', onMessage(bot))
 bot.on('ready', onReady)
 bot.on('room-invite', onRoomInvite)
-bot.on('room-topic', onRoomTopic) 
+bot.on('room-topic', onRoomTopic)
 bot.on('room-join', onRoomJoin)
 bot.on('room-leave', onRoomleave)
 bot.on('friendship', onFriendship)
