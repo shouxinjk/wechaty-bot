@@ -162,6 +162,8 @@ async function scheduleJobs(bot,jsondata) {
     var roomId = job.wxgroup.gid;//默认直接从后端获取微信群ID
     if(!roomId){//如果没有则从前端roomList查询获取
         roomId = config.room.roomList[topic];
+    }else{//将后端加载的群聊加入roomList，响应消息
+      config.room.roomList[topic] = roomId;
     }
     if(!roomId){
         console.log("cannot find room id by topic. ignore.[topic]",topic);
