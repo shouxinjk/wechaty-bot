@@ -160,7 +160,7 @@ export const onMessage = bot => {
  * 无结果返回提示信息
  */
 async function sendMessage2Room(room, text, imgUrl) {
-    console.log('Sending message to room ' + room.id)
+    console.log('Sending message to room ' + room)
     //发送图片
     try{
       let imageMsg = FileBox.fromUrl(imgUrl)
@@ -193,7 +193,7 @@ async function sendMessage2Person(msg, text, imgUrl) {
  * send image to room
  */
 async function sendImage2Room(room, imgUrl) {
-    console.log('Sending msg to room ' + room.id)
+    console.log('Sending msg to room ' + room)
     //发送图片
     try{
       let imageMsg = FileBox.fromUrl(imgUrl)
