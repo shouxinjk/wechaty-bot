@@ -7,7 +7,7 @@
 // https://github.com/motdotla/dotenv/issues/89#issuecomment-587753552
 import 'dotenv/config.js'
 
-import {PuppetPadlocal} from 'wechaty-puppet-padlocal';
+import { PuppetPadlocal } from 'wechaty-puppet-padlocal';
 
 import {
   Contact,
