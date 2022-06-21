@@ -46,6 +46,7 @@
     "wechaty": "^1.18.1",
     "wechaty-cqrs": "^0.7.5",
     "wechaty-plugin-contrib": "^1.11.1",
+    "wechaty-puppet-padlocal": "^1.11.18",
     "wechaty-puppet-oicq": "^1.10.2",
     "wechaty-puppet-walnut": "^1.11.6",
     "wechaty-puppet-wechat": "^1.18.1",
