@@ -193,7 +193,7 @@ async function scheduleJobs(bot,jsondata) {
  */
 async function sendMessage(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending daily to room ' + room.id)
+    console.log('Sending daily to room ' + room)
     //发送文字
     try{
         let txtMsg = "该交周报了，没交的话，我隔5分钟来问一次";
@@ -212,7 +212,7 @@ async function sendMessage(topic,bot) {
  */
 async function sendText(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending daily to room ' + room.id)
+    console.log('Sending daily to room ' + room)
     try{
         //let dailyText = await getDaily()
         let dailyText = "该交周报了，没交的话，我隔5分钟来问一次";
@@ -229,7 +229,7 @@ async function sendText(topic,bot) {
  */
 async function sendUrl(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending daily to room ' + room.id)
+    console.log('Sending daily to room ' + room)
     try{
         //let dailyText = await getDaily()
         let dailyText = new bot.UrlLink({
@@ -248,7 +248,7 @@ async function sendUrl(topic,bot) {
  * send image to room
  */
 async function sendImage2Room(room, imgUrl) {
-    console.log('Sending msg to room ' + room.id)
+    console.log('Sending msg to room ' + room)
     //发送图片
     let imageMsg = FileBox.fromUrl(imgUrl)
     room.say(imageMsg) 
@@ -260,7 +260,7 @@ async function sendImage2Room(room, imgUrl) {
  */
 async function sendImage(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending daily to room ' + room.id)
+    console.log('Sending daily to room ' + room)
     //let dailyText = await getDaily()
     const dailyText = FileBox.fromUrl('https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png')
     room.say(dailyText)
@@ -272,7 +272,7 @@ async function sendImage(topic,bot) {
  */
 async function sendItem(topic, keywords, bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room.id)
+    console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room)
     //根据设置的关键字构建query
     let query = {
                       "from":config.rooms[topic].offset,
@@ -398,7 +398,7 @@ function requestItem(topic,queryJson, room) {
 var featuredTimestamp = new Date();//默认为当前时间，重新启动后从当前时间开始推送
 async function sendFeature(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending featured item to room ' + room.id)
+    console.log('Sending featured item to room ' + room)
     //计算时间：每天自动更新：当天的主推商品逐条推送
     var now = new Date();
     now.setHours(0);//超过一天则从当天开始推送
@@ -553,7 +553,7 @@ function requestFeature(topic,queryJson, room) {
 //返回互阅列表：直接发送文字及链接
 async function sendGroupRead(topic, bot){
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending group read msg to room ' + room.id)   
+    console.log('Sending group read msg to room ' + room)   
 
     let res = requstGroupRead(topic,room)
     if(res && res.length>0)
@@ -719,7 +719,7 @@ function sendGroupReport(topic, room){
 //返回互阅列表：直接发送文字及链接
 async function sendPaidRead(topic, bot){
     const room = await bot.Room.find({topic: topic}) //get the room by topic
-    console.log('Sending paid read msg to room ' + room.id)   
+    console.log('Sending paid read msg to room ' + room)   
 
     let res = await requestPaidRead(topic)
     if(res && res.length>0)
