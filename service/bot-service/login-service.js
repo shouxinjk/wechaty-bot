@@ -250,8 +250,13 @@ async function sendUrl(topic,bot) {
 async function sendImage2Room(room, imgUrl) {
     console.log('Sending msg to room ' + room)
     //发送图片
-    let imageMsg = FileBox.fromUrl(imgUrl)
-    room.say(imageMsg) 
+    try{
+      let imageMsg = FileBox.fromUrl(imgUrl)
+      room.say(imageMsg)       
+    }catch(err){
+      console.log("failed send img 2 room",err)
+    }
+
 }
 
 /**
@@ -261,9 +266,13 @@ async function sendImage2Room(room, imgUrl) {
 async function sendImage(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending daily to room ' + room)
-    //let dailyText = await getDaily()
-    const dailyText = FileBox.fromUrl('https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png')
-    room.say(dailyText)
+    try{
+      //let dailyText = await getDaily()
+      const dailyText = FileBox.fromUrl('https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png')
+      room.say(dailyText)
+    }catch(err){
+      console.log("failed send img",err)
+    }
 }
 
 /**
@@ -286,7 +295,11 @@ async function sendItem(topic, keywords, bot) {
                     }    
     //发送文字
     let res = await requestItem(topic,query,room)
-    room.say(res)    
+    try{
+      room.say(res)    
+    }catch(err){
+      console.log("failed send item",err)
+    }
 }
 
 /**
