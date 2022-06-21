@@ -7,6 +7,8 @@
 // https://github.com/motdotla/dotenv/issues/89#issuecomment-587753552
 import 'dotenv/config.js'
 
+import {PuppetPadlocal} from 'wechaty-puppet-padlocal';
+
 import {
   Contact,
   Message,
@@ -33,9 +35,12 @@ import { onError } from '../service/bot-service/error-service.js'             //
 
 import { wechatyToken } from '../config/index.js' // 机器人token
 
+const padLocalPuppet = new PuppetPadlocal({ token:"puppet_padlocal_7536a45e0cc54cbe90728c7c0e9ec384" }) //padlocal token
+
 const bot = WechatyBuilder.build({
   name: 'little-happiness-bot',
-  puppet: 'wechaty-puppet-wechat',
+  //puppet: 'wechaty-puppet-wechat',
+  puppet: padLocalPuppet,
   /**
    * How to set Wechaty Puppet Provider:
    *

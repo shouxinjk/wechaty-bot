@@ -1,7 +1,7 @@
 
 export default {
     // puppet_padplus Token
-    wechatyToken: "puppet_padplu_你申请的token",
+    wechatyToken: "puppet_padlocal_7536a45e0cc54cbe90728c7c0e9ec384",
     // REST API
     sx_api: "https://data.shouxinjk.net/ilife/a",//后端访问地址
     es_api: "https://data.pcitech.cn/stuff/_search",//搜索地址
