@@ -326,8 +326,8 @@ function requestRobot(keyword, room, msg) {
                       send += "\n\n更多请点击👉"+moreUrl_short;
                       
                       //推送图片及文字消息
-                      if(room)sendImage2Room(room, logo);
-                      if(msg)sendImage2Person(msg, logo);
+                      if(room && isImage(logo))sendImage2Room(room, logo);
+                      if(msg && isImage(logo))sendImage2Person(msg, logo);
 
                       //推送评价结果：仅推送客观评价指标及客观评价结果
                       if(item.media){
@@ -785,4 +785,10 @@ function saveShortCode(eventId, itemKey, fromBroker, fromUser, channel, longUrl,
                 console.log("===short code saved.===\n",body);
           })
   })
+}
+
+//检查是否是图片链接，对于不是图片的则不发送
+function isImage(imgUrl){
+  if(!imgUrl)return false;
+  return imgUrl.endsWith(".jpg") || imgUrl.endsWith(".jpeg") || imgUrl.endsWith(".png") || imgUrl.endsWith(".jpg");
 }
