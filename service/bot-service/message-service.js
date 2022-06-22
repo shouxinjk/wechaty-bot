@@ -74,7 +74,7 @@ export const onMessage = bot => {
             sendText = msg.text().replace(self, "").replace("找", "").replace("查", "").replace("#", "")
           }catch(err){//如果没有就直接判断关键字
             let keywords = msg.text().split("找")
-            if(keywrods && keywords.length>1 && keywords[1].trim().length>2 && keywords[1].trim().length<20)
+            if(keywords && keywords.length>1 && keywords[1].trim().length>2 && keywords[1].trim().length<20)
               sendText = keywords[1];
           }
 
