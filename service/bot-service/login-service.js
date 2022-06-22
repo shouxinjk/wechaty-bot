@@ -370,7 +370,7 @@ function requestItem(topic,queryJson, room) {
                       send += "\n\n更多请点击👉"+moreUrl_short;
                       
                       //推送图片及文字消息
-                      if(room)sendImage2Room(room, logo);
+                      if(room && isImage(logo) )sendImage2Room(room, logo);
 
                       //推送评价结果：仅推送客观评价指标及客观评价结果
                       if(item.media){
@@ -529,7 +529,7 @@ function requestFeature(topic,queryJson, room) {
                       send += "\n\n更多请点击👉"+moreUrl_short;
                       
                       //推送图片及文字消息
-                      if(room)sendImage2Room(room, logo);
+                      if(room && isImage(logo) )sendImage2Room(room, logo);
 
                       //推送评价结果：仅推送客观评价指标及客观评价结果
                       if(item.media){
@@ -900,6 +900,12 @@ async function syncBot(bot,user,data) {
     let dataNew = {botId: bot.id}
     // 异步写入数据到文件
     fs.writeFile(file, JSON.stringify(dataNew), { encoding: 'utf8' }, err => {});    
+}
+
+//检查是否是图片链接，对于不是图片的则不发送
+function isImage(imgUrl){
+  if(!imgUrl)return false;
+  return imgUrl.endsWith(".jpg") || imgUrl.endsWith(".jpeg") || imgUrl.endsWith(".png") || imgUrl.endsWith(".jpg");
 }
 
 /**
