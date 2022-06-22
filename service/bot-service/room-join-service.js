@@ -10,6 +10,8 @@ const roomList = config.room.roomList
 // 进入房间监听回调 room-群聊 inviteeList-受邀者名单 inviter-邀请者
 export const onRoomJoin =  async function onRoomJoin(room, inviteeList, inviter) {
     // 判断配置项群组id数组中是否存在该群聊id
+    // 当前停用进群欢迎语。
+    /**
     if (Object.values(roomList).some(v => v == room.id)) {
         // let roomTopic = await room.topic()
         inviteeList.map(c => {
@@ -17,4 +19,5 @@ export const onRoomJoin =  async function onRoomJoin(room, inviteeList, inviter)
             room.say(roomJoinReply, c)
         })
     }
+    //**/
 }
