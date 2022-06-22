@@ -339,7 +339,7 @@ function requestItem(topic,queryJson, room) {
                   if (res.hits && res.hits.total>0) {
                     //随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
-                    let send = "好物推荐：";//res.data.reply
+                    let send = "🔥好物推荐：";//res.data.reply
                     for (let i = 0; i < res.hits.hits.length && i<total; i++) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
@@ -367,7 +367,7 @@ function requestItem(topic,queryJson, room) {
                       let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
 
                       send += "\n"+text +" "+url_short;
-                      send += "\n\n更多请点击👉"+moreUrl_short;
+                      send += "\n\n👀更多请看👉"+moreUrl_short;
                       
                       //推送图片及文字消息
                       if(room && isImage(logo) )sendImage2Room(room, logo);
