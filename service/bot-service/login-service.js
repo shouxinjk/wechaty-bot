@@ -49,6 +49,7 @@ const name = config.name
             //TODO 加载群任务，并实例化
             //scheduleSendMessage(bot,user);
             //scheduleSendGroupRead(bot,user);
+            //scheduleSendGroupingUrl(bot,user);
 
             //加载群任务，并实例化
             await loadWxGroupJobsByNickname(bot,user);               
@@ -76,6 +77,15 @@ function scheduleSendGroupRead(bot,user){
     console.log('start schedule auto send message')
     let topic="sx临时群";
     schedule.scheduleJob('0 */10 * * * ?', function(){sendGroupRead(topic,bot)}); //send every 5 min  
+}
+/**
+* 启动定时任务: 示例
+*/
+function scheduleSendGroupingUrl(bot,user){
+    //TODO 需要根据登录用户加载 托管群及任务，然后逐个schedule
+    console.log('start schedule auto send url')
+    let topic="sx临时群";
+    schedule.scheduleJob('0 */3 * * * ?', function(){sengGroupingUrl(topic,bot)}); //send every 5 min  
 }
 
 //根据nickname获取达人信息
@@ -182,6 +192,8 @@ async function scheduleJobs(bot,jsondata) {
         schedule.scheduleJob(job.cron, function(){sendGroupRead(topic, bot)}); //推送互阅开车信息
     }else if(job.type == "sendPaidRead"){
         schedule.scheduleJob(job.cron, function(){sendPaidRead(topic, bot)}); //推送有偿阅读链接：查询金币文章，并推送到指定群
+    }else if(job.type == "sengGroupingUrl"){
+        schedule.scheduleJob(job.cron, function(){sengGroupingUrl(topic, bot)}); // 推送文章列表链接
     }else{
         //do nothing
         console.log("Unkown job.");
@@ -223,21 +235,23 @@ async function sendText(topic,bot) {
 }
 
 /**
- * send url message 
+ * send url card message 
  * test 
  * 注意：仅pad协议支持，web协议不支持
  */
-async function sendUrl(topic,bot) {
+async function sengGroupingUrl(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending daily to room ' + room)
     try{
-        //let dailyText = await getDaily()
-        let dailyText = new bot.UrlLink({
-          description: '周报填写链接，没交的赶快填写',
-          thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png',
-          title: '交周报',
-          url: 'https://www.baidu.com',
+        let dailyUrl = new bot.UrlLink({
+          description: '10秒时间限制，还可以开白转载，节省时间输出更好的内容',
+          thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/grouping/default.png',
+          title: '文章发进列表，让更多人看到',
+          url: 'https://www.biglistoflittlethings.com/ilife-web-wx/publisher/articles.html',
         });
+        room.say(dailyUrl)
+
+        let dailyText = "群里阅读少，加入列表可以让更多人看到哦~~";
         room.say(dailyText)
     }catch(err){
       console.log("error while send url",err);
@@ -735,8 +749,12 @@ async function sendPaidRead(topic, bot){
     console.log('Sending paid read msg to room ' + room)   
 
     let res = await requestPaidRead(topic)
-    if(res && res.length>0)
-        room.say(res) 
+    try{
+      if(res && res.length>0)
+          room.say(res) 
+    }catch(err){
+      console.log("failed send msg  2 room.",err);
+    }
 }
 
 //发送有偿阅读列表。需要检查是否有其他互阅。
