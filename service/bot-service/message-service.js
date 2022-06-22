@@ -65,11 +65,21 @@ export const onMessage = bot => {
       if(roomListName.indexOf(topic)>-1){
         // 收到消息，提到自己
         if (await msg.mentionSelf()) {//仅处理提到自己的消息
-          // 获取提到自己的名字
-          let self = await msg.listener()
-          self = "@" + self.name()
-          // 获取消息内容，拿到整个消息文本，去掉 @+名字
-          let sendText = msg.text().replace(self, "").replace("找", "").replace("查", "").replace("#", "")
+          let sendText = "";
+          try{//尝试获取自己的名字
+            // 获取提到自己的名字
+            let self = await msg.listener()
+            self = "@" + self.name()
+            // 获取消息内容，拿到整个消息文本，去掉 @+名字
+            sendText = msg.text().replace(self, "").replace("找", "").replace("查", "").replace("#", "")
+          }catch(err){//如果没有就直接判断关键字
+            let keywords = msg.text().split("找")
+            if(keywrods && keywords.length>1 && keywords[1].trim().length>2 && keywords[1].trim().length<20)
+              sendText = keywords[1];
+          }
+
+          if(sendText.trim().length==0)//没有关键字不做任何处理
+            return;
 
           // 请求机器人接口回复
           let res = await requestRobot(sendText,room)
