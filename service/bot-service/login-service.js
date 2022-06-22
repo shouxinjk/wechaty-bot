@@ -244,7 +244,7 @@ async function sengGroupingUrl(topic,bot) {
     console.log('Sending daily to room ' + room)
     try{
         let dailyUrl = new bot.UrlLink({
-          description: '10秒阅读要求，还可以开白转载，互推增粉',
+          description: '10秒阅读要求，还可以开白转载',
           thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/grouping/default.png',
           title: '文章发进列表，方便阅读',
           url: 'https://www.biglistoflittlethings.com/ilife-web-wx/publisher/articles.html',
@@ -471,7 +471,7 @@ async function sendFeature(topic,bot) {
             }    
     //发送文字
     let res = await requestFeature(topic,query,room)
-    if(res && res.length>"好物推荐：".length)
+    if(room && res && res.length>"好物推荐：".length)
         room.say(res)    
 }
 
@@ -583,8 +583,13 @@ async function sendGroupRead(topic, bot){
     console.log('Sending group read msg to room ' + room)   
 
     let res = requstGroupRead(topic,room)
-    if(res && res.length>0)
-        room.say(res) 
+    try{
+      if(res && res.length>0)
+          room.say(res)       
+    }catch(err){
+      console.log("failed send group read msg.",err);
+    }
+
 }
 
 
@@ -740,7 +745,12 @@ function sendGroupReport(topic, room){
 
   //直接返回文字信息即可
   var txt = "📈点击查看报告👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
-  room.say(txt);
+  try{
+    room.say(txt);
+  }catch(err){
+    console.log("failed send group report.",err);
+  }
+  
 }
 
 //返回互阅列表：直接发送文字及链接
