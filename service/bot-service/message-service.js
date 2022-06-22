@@ -68,7 +68,7 @@ export const onMessage = bot => {
           let sendText = "";
           try{//尝试获取自己的名字
             // 获取提到自己的名字
-            let self = await msg.listener()
+            let self = await msg.listener() // 注意在padlocal下 self为undefined
             self = "@" + self.name()
             // 获取消息内容，拿到整个消息文本，去掉 @+名字
             sendText = msg.text().replace(self, "").replace("找", "").replace("查", "").replace("#", "")
