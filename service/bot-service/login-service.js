@@ -244,9 +244,9 @@ async function sengGroupingUrl(topic,bot) {
     console.log('Sending daily to room ' + room)
     try{
         let dailyUrl = new bot.UrlLink({
-          description: '10秒时间限制，还可以开白转载，节省时间输出更好的内容',
+          description: '10秒阅读要求，还可以开白转载，互推增粉',
           thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/grouping/default.png',
-          title: '文章发进列表，让更多人看到',
+          title: '文章发进列表，方便阅读',
           url: 'https://www.biglistoflittlethings.com/ilife-web-wx/publisher/articles.html',
         });
         room.say(dailyUrl)
