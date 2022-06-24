@@ -96,7 +96,7 @@ export const onMessage = bot => {
           }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
             let res = sendGroupSubscribe(msg);
             await msg.say(res,msg.talker())
-          }else if (msg.text().startsWith('找') || msg.text().startsWith('查') || msg.text().startsWith('#') ) {
+          }else if (msg.text().startsWith('找') && msg.text().length<20 ) {
             let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
             let res = await requestRobot(sendText,room, null)
             msg.say(res, msg.talker())
@@ -474,7 +474,7 @@ function requestGroupingArticles(msg) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let send = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读，并按以下格式报数：\nA 11 22 33 44 55";//res.data.reply
+                    let sendtxt = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读，并按以下格式报数：\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -505,8 +505,8 @@ function requestGroupingArticles(msg) {
                     },config.rooms[topic].grouping.timeout*2);                    
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
-                    send = send.replace(/Smile/g, name)
-                    resolve(send)
+                    sendtxt = sendtxt.replace(/Smile/g, name)
+                    resolve(sendtxt)
                   } else {
                     resolve("一篇文章都没有，先散了吧，等等再来~~")
                   }
