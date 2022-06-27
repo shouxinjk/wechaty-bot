@@ -124,7 +124,37 @@ export const onMessage = bot => {
           }          
         }
       }else{//非托管群仅响应。当前不做响应。对于共享群的情况，可以响应激活码
-        console.log("非托管群消息，直接忽略");
+        console.log("非托管群消息，仅响应查询及开车消息");
+        if (msg.text() === '互阅发车' || msg.text() === '互阅开车' || msg.text() === '互阅车') {//互月发车：推送链接即可
+          let res = sendGroupRead(msg);
+          await msg.say(res,msg.talker())
+        }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
+          let res = sendGroupSubscribe(msg);
+          await msg.say(res,msg.talker())
+        }else if (msg.text().startsWith('找') && msg.text().length<20 ) {
+          let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
+          let res = await requestRobot(sendText,room, null)
+          msg.say(res, msg.talker())
+        }else if(config.rooms[topic] && config.rooms[topic].grouping.code && config.rooms[topic].grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
+          const regex = /^\s?[a-zA-Z]\s+\d+/;//报数格式必须是： A 1 2 3 4 5 
+          if(regex.test(msg.text())){//是报数，则予以响应
+            var boxName = msg.text().match(/[a-zA-Z]{1}/g)[0].toUpperCase();//匹配得到分箱
+            var readCounts = msg.text().match(/\d+/g);//匹配得到所有报数
+            console.log("got numbers.",boxName, readCounts);
+            if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
+              readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length == readCounts.length ){
+              checkBrokerByNickname(msg,config.rooms[topic].grouping.articles[boxName],readCounts);
+            }else if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
+              readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length != readCounts.length ){ //只有部分数据,提示补全
+              room.say("报数与文章数不匹配。车厢"+boxName +"共有"+config.rooms[topic].grouping.articles[boxName].length+"篇文章，但报数为" +readCounts.length+"组", msg.talker())
+            }else if(!config.rooms[topic].grouping.articles[boxName] ){ //车厢号错误
+              room.say("车厢号错误。需要按照车厢报数，如：A 11 22 33 44 55", msg.talker())
+            }else{
+              //do nothing
+              room.say("请检查输入，需要包含车厢号及报数，并用空格分隔。如：A 11 22 33 44 55", msg.talker())
+            }
+          }
+        }        
         /**
         if(msg.room() && config.magicCode && config.magicCode.trim().length>0 && msg.text() === config.magicCode){
           console.log("got magic code. activate wx group.");

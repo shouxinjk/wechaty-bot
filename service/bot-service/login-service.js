@@ -677,7 +677,7 @@ function requestGroupingArticles(topic, room) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let send = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读，并按以下格式报数：\nA 11 22 33 44 55";//res.data.reply
+                    let sendtxt = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -692,7 +692,7 @@ function requestGroupingArticles(topic, room) {
                     }
                     // 逐节推送
                     for(let k=0;k<config.rooms[topic].grouping.names.length&&k<=boxIndex;k++){
-                      let boxMsg = ""+config.rooms[topic].grouping.names[k];
+                      let boxMsg = "车厢："+config.rooms[topic].grouping.names[k];
                       let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
                       console.log("got box "+k,articles);
                       for(let j=0;j<articles.length;j++){
@@ -702,10 +702,14 @@ function requestGroupingArticles(topic, room) {
                       room.say(boxMsg);
                     }
 
+                    //发送报数提示
+                    sendtxt = sendtxt.replace(/__howlong/,Math.floor(res.length*15/60)>0?(""+Math.floor(res.length*15/60)):"1");
+                    msg.say(sendtxt, msg.talker());
+
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
                       sendGroupReport(topic, room);
-                    },config.rooms[topic].grouping.timeout*2);                      
+                    },/*config.rooms[topic].grouping.timeout*2 */ res.length*15*1000);                      
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
