@@ -131,7 +131,7 @@ export const onMessage = bot => {
         }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
           let res = sendGroupSubscribe(msg);
           await msg.say(res,msg.talker())
-        }else if (msg.text().startsWith('找') && msg.text().length<20 ) {
+        }else if (msg.text().startsWith('找') && msg.text().length<10 ) {
           let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
           let res = await requestRobot(sendText,room, null)
           msg.say(res, msg.talker())
