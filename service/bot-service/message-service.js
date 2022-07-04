@@ -131,11 +131,11 @@ export const onMessage = bot => {
         }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
           let res = sendGroupSubscribe(msg);
           await msg.say(res,msg.talker())
-        }else if (msg.text().startsWith('找') && msg.text().length<10 ) {
+        }/*else if (msg.text().startsWith('找') && msg.text().length<10 ) {
           let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
           let res = await requestRobot(sendText,room, null)
           msg.say(res, msg.talker())
-        }else if(config.rooms[topic] && config.rooms[topic].grouping.code && config.rooms[topic].grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
+        }*/else if(config.rooms[topic] && config.rooms[topic].grouping.code && config.rooms[topic].grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
           const regex = /^\s?[a-zA-Z]\s+\d+/;//报数格式必须是： A 1 2 3 4 5 
           if(regex.test(msg.text())){//是报数，则予以响应
             var boxName = msg.text().match(/[a-zA-Z]{1}/g)[0].toUpperCase();//匹配得到分箱
