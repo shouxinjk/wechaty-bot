@@ -713,8 +713,8 @@ function requestGroupingArticles(topic, room) {
                     },5*60*1000 /*config.rooms[topic].grouping.timeout*2  res.length*15*1000*/);                      
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
-                    send = send.replace(/Smile/g, name)
-                    resolve(send)
+                    sendtxt = sendtxt.replace(/Smile/g, name)
+                    resolve(sendtxt)
                   } else {
                     resolve("一篇文章都没有，稍后再来~~")
                   }
