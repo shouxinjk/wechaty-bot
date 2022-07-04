@@ -705,7 +705,7 @@ function requestGroupingArticles(topic, room) {
                     //发送报数提示
                     //sendtxt = sendtxt.replace(/__howlong/,Math.floor(res.length*15/60)>0?(""+Math.floor(res.length*15/60)):"1");
                     sendtxt = sendtxt.replace(/__howlong/,"5");
-                    msg.say(sendtxt, msg.talker());
+                    room.say(sendtxt);
 
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
