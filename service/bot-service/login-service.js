@@ -703,13 +703,14 @@ function requestGroupingArticles(topic, room) {
                     }
 
                     //发送报数提示
-                    sendtxt = sendtxt.replace(/__howlong/,Math.floor(res.length*15/60)>0?(""+Math.floor(res.length*15/60)):"1");
+                    //sendtxt = sendtxt.replace(/__howlong/,Math.floor(res.length*15/60)>0?(""+Math.floor(res.length*15/60)):"1");
+                    sendtxt = sendtxt.replace(/__howlong/,"5");
                     msg.say(sendtxt, msg.talker());
 
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
                       sendGroupReport(topic, room);
-                    },/*config.rooms[topic].grouping.timeout*2 */ res.length*15*1000);                      
+                    },5*60*1000 /*config.rooms[topic].grouping.timeout*2  res.length*15*1000*/);                      
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
