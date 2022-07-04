@@ -35,7 +35,7 @@ import { onError } from '../service/bot-service/error-service.js'             //
 
 import { wechatyToken } from '../config/index.js' // 机器人token
 
-const padLocalPuppet = new PuppetPadlocal({ token:'puppet_padlocal_b97a741cceb74b3ea440283a2e68a527' }) // padlocal token
+const padLocalPuppet = new PuppetPadlocal({ token:'puppet_padlocal_7536a45e0cc54cbe90728c7c0e9ec384' }) // padlocal token: 有效期至2022-10-04
 
 const bot = WechatyBuilder.build({
   name: 'little-happiness-bot',
