@@ -251,7 +251,9 @@ async function sengGroupingUrl(topic,bot) {
         });
         room.say(dailyUrl)
 
-        let dailyText = "群里阅读少，加入列表可以让更多人看到哦~~";
+        //发送一条提示语：随机获取
+        let randomIndex = Math.floor(Math.random()* config.tips.length);
+        let dailyText = config.tips[randomIndex];//"群里阅读少，加入列表可以让更多人看到哦~~";
         room.say(dailyText)
     }catch(err){
       console.log("error while send url",err);
