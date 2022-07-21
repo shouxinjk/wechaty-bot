@@ -183,6 +183,9 @@ async function scheduleJobs(bot,jsondata) {
     await room.sync()
     //初始化rooms配置
     if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+    //设置群owner信息
+    config.rooms[topic].fromBroker = job.broker.id;
+    //config.rooms[topic].fromUser = job.broker.openid;//默认采用系统默认用户
     //分别加载任务
     if(job.type == "sendItem"){//根据关键词逐条发送
         schedule.scheduleJob(job.cron, function(){sendItem(topic, tags, bot)}); //推送商品：标题、来源、价格、首图、链接。注意：链接只能发裸链
@@ -346,7 +349,12 @@ function requestItem(topic,queryJson, room) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
                       //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
-                      let url =  config.sx_wx_api+"/go.html?id="+item._key;//TODO需要添加 fromBroker信息
+                      
+                      let fromBroker = config.rooms[topic].fromBroker;//"system";//TODO 需要替换为当前达人
+                      let fromUser = "bot";//固定为机器人
+                      let channel = "wechat";
+
+                      let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
                       let logo = item.logo?item.logo: item.images[0]
                       let moreUrl =  config.sx_wx_api+"/index.html";
                       if(queryJson.query&&queryJson.query.query_string&&queryJson.query.query_string.query&&queryJson.query.query_string.query.trim().length>1)moreUrl+="?keyword="+encodeURIComponent(queryJson.query.query_string.query);
@@ -354,9 +362,6 @@ function requestItem(topic,queryJson, room) {
                       //获得短网址：单个item地址
                       let eventId = crypto.randomUUID();
                       let itemKey = item._key;
-                      let fromBroker = "system";//TODO 需要替换为当前达人
-                      let fromUser = "bot";//固定为机器人
-                      let channel = "wechat";
                       let shortCode = generateShortCode(url);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
                       let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
@@ -505,7 +510,13 @@ function requestFeature(topic,queryJson, room) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
                       //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
-                      let url =  config.sx_wx_api+"/go.html?id="+item._key;//TODO需要添加 fromBroker信息
+
+                      let fromBroker = config.rooms[topic].fromBroker;//"system";//TODO 需要替换为当前达人
+                      let fromUser = "bot";//固定为机器人
+                      let channel = "wechat";
+
+                      let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
+
                       let logo = item.logo?item.logo: item.images[0]
                       let moreUrl =  config.sx_wx_api+"/index.html";
                       if(queryJson.query&&queryJson.query.query_string&&queryJson.query.query_string.query&&queryJson.query.query_string.query.trim().length>1)moreUrl+="?keyword="+encodeURIComponent(queryJson.query.query_string.query);
@@ -513,9 +524,6 @@ function requestFeature(topic,queryJson, room) {
                       //获得短网址：单个item地址
                       let eventId = crypto.randomUUID();
                       let itemKey = item._key;
-                      let fromBroker = "system";//TODO 需要替换为当前达人
-                      let fromUser = "bot";//固定为机器人
-                      let channel = "wechat";
                       let shortCode = generateShortCode(url);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
                       let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
