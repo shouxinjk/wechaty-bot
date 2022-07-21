@@ -173,7 +173,7 @@ export const onMessage = bot => {
       if (msg.text() === 'ding') {
         await msg.say('dong',msg.talker())
       } 
-      if (msg.text().startsWith('找') || msg.text().startsWith('查') || msg.text().startsWith('#') ) {
+      if (msg.text().startsWith('找') && msg.text().length<20 ) {
         let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
         let res = await requestRobot(sendText,null,msg)
         msg.say(res, msg.talker())
@@ -333,7 +333,7 @@ function requestRobot(keyword, room, msg) {
                   console.log("got search result.",body);
                   //let res = JSON.parse(body)
                   let res = body;
-                  if (res.hits && res.hits.total>0) {
+                  if (res.hits && res.hits.total>0 && res.hits.hits && res.hits.hits.length>0) {
                     //随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
                     let send = "亲，找到【"+keyword+"】👇";//res.data.reply
@@ -341,16 +341,26 @@ function requestRobot(keyword, room, msg) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
                       //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
-                      let url =  config.sx_wx_api+"/go.html?id="+item._key;//TODO需要添加 fromBroker信息
+
+                      let fromBroker = "system";//TODO 需要替换为当前达人
+                      try{
+                        const roomTopic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>
+                        fromBroker = config.rooms[roomTopic].fromBroker;
+                      }catch(err){
+                        console.log("failed find fromBroker by current room.",room);
+                      }
+                      let fromUser = "bot";//固定为机器人
+                      let channel = "wechat";
+
+                      let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
+
                       let logo = item.logo?item.logo: item.images[0]
                       let moreUrl =  config.sx_wx_api+"/index.html?keyword="+encodeURIComponent(keyword);
 
                       //获得短网址：单个item地址
                       let eventId = crypto.randomUUID();
                       let itemKey = item._key;
-                      let fromBroker = "system";//TODO 需要替换为当前达人
-                      let fromUser = "bot";//固定为机器人
-                      let channel = "wechat";
+
                       let shortCode = generateShortCode(url);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
                       let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
