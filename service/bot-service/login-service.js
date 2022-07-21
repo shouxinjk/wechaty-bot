@@ -338,7 +338,7 @@ function requestItem(topic,queryJson, room) {
                   console.log("got search result.",body);
                   //let res = JSON.parse(body)
                   let res = body;
-                  if (res.hits && res.hits.total>0) {
+                  if (res.hits && res.hits.total>0 && res.hits.hits && res.hits.hits.length>0) {
                     //随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
                     let send = "🔥好物推荐：";//res.data.reply
@@ -497,7 +497,7 @@ function requestFeature(topic,queryJson, room) {
                   console.log("got search result.",body);
                   //let res = JSON.parse(body)
                   let res = body;
-                  if (res.hits && res.hits.total>0) {
+                  if (res.hits && res.hits.total>0 && res.hits.hits && res.hits.hits.length>0) {
                     //随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
                     let send = "🆚🔥推荐：";//res.data.reply
