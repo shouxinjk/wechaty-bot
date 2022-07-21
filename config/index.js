@@ -24,6 +24,8 @@ export default {
     rooms:{},//记录群内活动明细，包括grouping、商品推送等,key为群名称，其结构为groupingTemplate
     // 群聊会话模板
     groupingTemplate:{
+        fromBroker:"system",//记录所属brokerId，为指定微信群主
+        fromUser:"o8HmJ1ItjXilTlFtJNO25-CAQbbg",//记录所属user Openid
         offset:0,//记录关键词商品offset
         featuredOffset:0,//记录主推商品offset
         grouping:{// 互阅会话：记录互阅历史，能够对当前的互阅列表进行互动。互阅开始时填充articles，下一轮互阅将更新所有数据
