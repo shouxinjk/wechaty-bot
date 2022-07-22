@@ -132,7 +132,7 @@ function loadWxGroupJobsByNickname(bot, user) {
     var nickname = user.payload.name;
     console.log("try to check broker by nickname. [nickname]",nickname);
     return new Promise((resolve, reject) => {
-        let url = config.sx_api+"/wx/wxGroupTask/rest/byNickname?nickname="+encodeURIComponent(nickname)
+        let url = config.sx_api+"/wx/wxGroupTask/rest/byNickname?nickname="; //+encodeURIComponent(nickname) //当前获取所有任务，使用同一个账号发送
         request({
               url: url,
               method: 'GET'
