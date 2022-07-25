@@ -85,7 +85,7 @@ function scheduleSendGroupingUrl(bot,user){
     //TODO 需要根据登录用户加载 托管群及任务，然后逐个schedule
     console.log('start schedule auto send url')
     let topic="sx临时群";
-    schedule.scheduleJob('0 */3 * * * ?', function(){sengGroupingUrl(topic,bot)}); //send every 5 min  
+    schedule.scheduleJob('0 */3 * * * ?', function(){sendGroupingUrl(topic,bot)}); //send every 5 min  
 }
 
 //根据nickname获取达人信息
@@ -195,8 +195,9 @@ async function scheduleJobs(bot,jsondata) {
         schedule.scheduleJob(job.cron, function(){sendGroupRead(topic, bot)}); //推送互阅开车信息
     }else if(job.type == "sendPaidRead"){
         schedule.scheduleJob(job.cron, function(){sendPaidRead(topic, bot)}); //推送有偿阅读链接：查询金币文章，并推送到指定群
-    }else if(job.type == "sengGroupingUrl"){
-        schedule.scheduleJob(job.cron, function(){sengGroupingUrl(topic, bot)}); // 推送文章列表链接
+    }else if(job.type == "sendGroupingUrl"){
+        //schedule.scheduleJob(job.cron, function(){sendGroupingUrl(topic, bot)}); // 推送文章列表链接
+        config.groupingGroups.push(topic);//把互阅群加入列表，等待在接收到信息时自动回复
     }else{
         //do nothing
         console.log("Unkown job.");
@@ -242,7 +243,7 @@ async function sendText(topic,bot) {
  * test 
  * 注意：仅pad协议支持，web协议不支持
  */
-async function sengGroupingUrl(topic,bot) {
+async function sendGroupingUrl(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending daily to room ' + room)
     try{
@@ -589,12 +590,19 @@ function requestFeature(topic,queryJson, room) {
 /**
  * 从CK查询待推送内容。每次推送一条
  */
-function sendFeatureV2(topic, bot) {
+async function sendFeatureV2(topic, bot) {
   const room = await bot.Room.find({topic: topic}) //get room by topic
-  console.log('Sending featured item to room ' + room)  
-
+  console.log('Sending featured item to room2 ' + room, "topic: "+topic)  
+  //发送文字
+  let res = await requestFeatureV2(topic,room)
+  if(room && res && res.length>"好物推荐：".length)
+      room.say(res) 
+}
+function requestFeatureV2(topic, room) {
+  console.log('request featured item to room2 ' + room, "topic: "+topic)  
   return new Promise((resolve, reject) => {
-    let url = config.analyze_api +"?query=select * from ilife.features where status='pending' and groupType='wechat' and groupName='"+topic+"' order by ts desc limit 1format JSON"
+    let url = config.analyze_api +"?query=select * from ilife.features where status='pending' and groupType='wechat' and groupName='"+encodeURIComponent(topic)+"' order by ts desc limit 1 format JSON"
+    console.log("try fetch featured item by url.",url);
     request({
               url: url,
               method: 'GET',
@@ -604,14 +612,15 @@ function sendFeatureV2(topic, bot) {
             },
             function(error, response, body) {
                 if (!error && response.statusCode == 200) {
-                  console.log("got search result.",body);
-                  //let res = JSON.parse(body)
-                  let res = body;
-                  if (res.rows>0) {//返回仅一条
+                  //console.log("got featured item.",body);
+                  console.log("got featured item.");
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  if (res.data && res.data.length>0) {//返回仅一条
                     let total = 1;
                     let send = "🆚🔥推荐：";
 
-                    var item  = JSON.parse(res.rows[0].jsonStr);
+                    var item  = JSON.parse(res.data[0].jsonStr);
                     let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
                     //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
 
@@ -623,7 +632,6 @@ function sendFeatureV2(topic, bot) {
 
                     let logo = item.logo?item.logo: item.images[0]
                     let moreUrl =  config.sx_wx_api+"/index.html";
-                    if(queryJson.query&&queryJson.query.query_string&&queryJson.query.query_string.query&&queryJson.query.query_string.query.trim().length>1)moreUrl+="?keyword="+encodeURIComponent(queryJson.query.query_string.query);
 
                     //获得短网址：单个item地址
                     let eventId = crypto.randomUUID();
@@ -677,25 +685,35 @@ function sendFeatureV2(topic, bot) {
                     config.rooms[topic].featuredOffset = config.rooms[topic].featuredOffset + 1;      
 
                     //从CK删除推送记录：直接根据eventId再次写入即可
-                    removeFeatureItem(res.rows[0].eventId);        
+                    removeFeatureItem(res.data[0].eventId,
+                                      res.data[0].brokerId,
+                                      res.data[0].groupType,
+                                      res.data[0].groupId,
+                                      res.data[0].groupName,
+                                      res.data[0].itemType,
+                                      res.data[0].itemKey,
+                                      res.data[0].jsonStr);        
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
                     resolve(send)
                   } else {
-                    config.rooms[topic].featuredOffset=0;//重新发起搜索
+                    console.log("no featured item found.");
+                    //config.rooms[topic].featuredOffset=0;//重新发起搜索
                   }
                 } else {
-                  config.rooms[topic].featuredOffset=0;//重新发起搜索
+                  console.log("fetch featured item error.",error,response);
+                  //config.rooms[topic].featuredOffset=0;//重新发起搜索
                 }
           })
   })
 }
+
 //删除推荐条目：更新状态为done
-function removeFeatureItem(eventId) {
-  console.log("try to remove featured item...",eventId);
+function removeFeatureItem(eventId, brokerId, groupType, groupId, groupName,itemType, itemKey, jsonStr) {
+  console.log("try to change featured item status...",eventId);
   return new Promise((resolve, reject) => {
-    let q = "insert into ilife.features values ('"+eventId+"','','','','','','','{}','done',now())";
+    let q = "insert into ilife.features values ('"+eventId+"','"+brokerId+"','"+groupType+"','"+groupId+"','"+groupName+"','"+itemType+"','"+itemKey+"','"+jsonStr+"','done',now())";
     request({
               url: config.analyze_api+"?query="+encodeURIComponent(q),
               method: 'POST',
@@ -704,7 +722,7 @@ function removeFeatureItem(eventId) {
               }
             },
             function(error, response, body) {
-                console.log("===short code saved.===\n",body);
+                console.log("===feature item status changed.===\n",body,error);
           })
   })
 }
