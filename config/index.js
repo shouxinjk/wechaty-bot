@@ -10,6 +10,9 @@ export default {
     magicCode:"",// 接管激活码：仅在接收到激活码之后才响应消息，或推送通知。由后台生成，生成后需要直接放置到对应的broker信息上，用于核对。后台会自动生成6位短码
     broker:{},//同步后缓存达人信息。包含激活码。
     localFile:"./ilife.json",//本地缓存botid信息文件。
+    groupingGroups:[],//支持自动回复grouping的群列表
+    groupingTimestamp:0,//互阅通知发送时间戳
+    groupingDuration:60*60*1000,//连续发送通知的间隔时间
     // 房间/群聊
     room: {
         // 管理群组列表：TODO 需要调整为从服务器端获取。仅获取已经激活的微信群。

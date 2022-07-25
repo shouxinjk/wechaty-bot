@@ -96,6 +96,28 @@ export const onMessage = bot => {
           }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
             let res = sendGroupSubscribe(msg);
             await msg.say(res,msg.talker())
+          }else if (msg.text() === '互阅' || msg.text() === '互' || isUrlValid(msg.text())) {//推送列表链接
+            if(new Date().getTime() - config.groupingTimestamp > config.groupingDuration){
+              try{
+                  let dailyUrl = new bot.UrlLink({
+                    description: '10秒阅读要求，还可以开白转载',
+                    thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/grouping/default.png',
+                    title: '文章发进列表，阅读更方便',
+                    url: 'https://www.biglistoflittlethings.com/ilife-web-wx/publisher/articles.html',
+                  });
+                  msg.say(dailyUrl, msg.talker())
+
+                  //发送一条提示语：随机获取
+                  let randomIndex = Math.floor(Math.random()* config.tips.length);
+                  let dailyText = config.tips[randomIndex];//"群里阅读少，加入列表可以让更多人看到哦~~";
+                  msg.say(dailyText, msg.talker())
+
+                  //更新时间戳
+                  config.groupingTimestamp = new Date().getTime();
+              }catch(err){
+                console.log("error while send url",err);
+              } 
+            }
           }else if (msg.text().startsWith('找') && msg.text().length<20 ) {
             let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
             let res = await requestRobot(sendText,room, null)
@@ -802,7 +824,6 @@ function sendGroupSubscribe(msg){
   return txt;
 }
 
-
 //生成短码
 function generateShortCode(url){
     var chars = "0123456789abcdefghigklmnopqrstuvwxyzABCDEFGHIGKLMNOPQRSTUVWXYZ".split("");
@@ -846,4 +867,13 @@ function saveShortCode(eventId, itemKey, fromBroker, fromUser, channel, longUrl,
 function isImage(imgUrl){
   if(!imgUrl)return false;
   return imgUrl.endsWith(".jpg") || imgUrl.endsWith(".jpeg") || imgUrl.endsWith(".png") || imgUrl.endsWith(".jpg");
+}
+
+//检查是否是微信公众号文章链接
+function isUrlValid(url) {
+    //仅支持短连接，不支持带参数的长链接
+    if(url&&url.trim().length>0){
+        url = url.split("?")[0];
+    }
+    return /^https:\/\/mp\.weixin\.qq\.com\/s\/[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]$/i.test(url);
 }

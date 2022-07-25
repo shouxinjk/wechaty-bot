@@ -6,6 +6,8 @@ export const onRoomTopic = async user => {
     try {
         console.log('========================onRoomTopic👇========================')
         console.log(`获取主题事件，当有人改变房间主题时发出。`)
+        //rest：rest/changeTopic
+        //param：{old:xxx,new:xxx}
     } catch (error) {
         console.log(`onRoomTopic：${error}`)
     }
