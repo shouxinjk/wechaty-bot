@@ -190,7 +190,7 @@ async function scheduleJobs(bot,jsondata) {
     if(job.type == "sendItem"){//根据关键词逐条发送
         schedule.scheduleJob(job.cron, function(){sendItem(topic, tags, bot)}); //推送商品：标题、来源、价格、首图、链接。注意：链接只能发裸链
     }else if(job.type == "sendFeature"){//发送主推(feature)商品
-        schedule.scheduleJob(job.cron, function(){sendFeature(topic, bot)}); //推送主推商品：能够将最近添加的feature商品推送到
+        schedule.scheduleJob(job.cron, function(){sendFeatureV2(topic, bot)}); //推送主推商品：能够将最近添加的feature商品推送到
     }else if(job.type == "sendGroupRead"){
         schedule.scheduleJob(job.cron, function(){sendGroupRead(topic, bot)}); //推送互阅开车信息
     }else if(job.type == "sendPaidRead"){
@@ -586,6 +586,128 @@ function requestFeature(topic,queryJson, room) {
   })
 }
 
+/**
+ * 从CK查询待推送内容。每次推送一条
+ */
+function sendFeatureV2(topic, bot) {
+  const room = await bot.Room.find({topic: topic}) //get room by topic
+  console.log('Sending featured item to room ' + room)  
+
+  return new Promise((resolve, reject) => {
+    let url = config.analyze_api +"?query=select * from ilife.features where status='pending' and groupType='wechat' and groupName='"+topic+"' order by ts desc limit 1format JSON"
+    request({
+              url: url,
+              method: 'GET',
+              headers: {
+                "Authorization":"Basic ZGVmYXVsdDohQG1AbjA1"
+              }
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got search result.",body);
+                  //let res = JSON.parse(body)
+                  let res = body;
+                  if (res.rows>0) {//返回仅一条
+                    let total = 1;
+                    let send = "🆚🔥推荐：";
+
+                    var item  = JSON.parse(res.rows[0].jsonStr);
+                    let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
+                    //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
+
+                    let fromBroker = config.rooms[topic].fromBroker;//"system";//TODO 需要替换为当前达人
+                    let fromUser = "bot";//固定为机器人
+                    let channel = "wechat";
+
+                    let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
+
+                    let logo = item.logo?item.logo: item.images[0]
+                    let moreUrl =  config.sx_wx_api+"/index.html";
+                    if(queryJson.query&&queryJson.query.query_string&&queryJson.query.query_string.query&&queryJson.query.query_string.query.trim().length>1)moreUrl+="?keyword="+encodeURIComponent(queryJson.query.query_string.query);
+
+                    //获得短网址：单个item地址
+                    let eventId = crypto.randomUUID();
+                    let itemKey = item._key;
+                    let shortCode = generateShortCode(url);
+                    saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
+                    let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+
+                    //获得短网址：更多items地址
+                    eventId = crypto.randomUUID();
+                    itemKey = "page_"+eventId
+                    shortCode = generateShortCode(moreUrl);
+                    saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
+                    let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
+
+                    send += "\n"+text +" "+url_short;
+                    send += "\n\n👀更多请看👉"+moreUrl_short;
+                    
+                    //推送图片及文字消息
+                    if(room && isImage(logo) )sendImage2Room(room, logo);
+
+                    //推送评价结果：仅推送客观评价指标及客观评价结果
+                    if(item.media){
+                      let mediaKeys = [];
+                      if(item.media.measure)mediaKeys.push("measure");
+                      if(item.media["measure-scheme"])mediaKeys.push("measure-scheme");
+                      if(mediaKeys.length==0){
+                        //do nothing
+                      }else if(mediaKeys.length==1){//仅有一个就直接发送
+                        if(room)sendImage2Room(room, item.media[mediaKeys[0]]);                          
+                      }else{//否则随机发送
+                        let r = Math.floor(Math.random() * 100) % mediaKeys.length; //生成随机数
+                        if(room)sendImage2Room(room, item.media[mediaKeys[r]]);
+                      }                       
+                    }
+
+                    //推荐语
+                    if(item.advice){
+                      let adviceKeys = Object.keys(item.advice);
+                      if(adviceKeys.length==0){
+                        //do nothing
+                      }else if(adviceKeys.length==1){//仅有一个就直接发送
+                        if(room)room.say(item.advice[adviceKeys[0]]);                          
+                      }else{//否则随机发送
+                        let r = Math.floor(Math.random() * 100) % adviceKeys.length; //生成随机数
+                        if(room)room.say(item.advice[adviceKeys[r]]); 
+                      }                       
+                    }  
+
+                    //修改下标
+                    config.rooms[topic].featuredOffset = config.rooms[topic].featuredOffset + 1;      
+
+                    //从CK删除推送记录：直接根据eventId再次写入即可
+                    removeFeatureItem(res.rows[0].eventId);        
+
+                    // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
+                    send = send.replace(/Smile/g, name)
+                    resolve(send)
+                  } else {
+                    config.rooms[topic].featuredOffset=0;//重新发起搜索
+                  }
+                } else {
+                  config.rooms[topic].featuredOffset=0;//重新发起搜索
+                }
+          })
+  })
+}
+//删除推荐条目：更新状态为done
+function removeFeatureItem(eventId) {
+  console.log("try to remove featured item...",eventId);
+  return new Promise((resolve, reject) => {
+    let q = "insert into ilife.features values ('"+eventId+"','','','','','','','{}','done',now())";
+    request({
+              url: config.analyze_api+"?query="+encodeURIComponent(q),
+              method: 'POST',
+              headers: {
+                "Authorization":"Basic ZGVmYXVsdDohQG1AbjA1"
+              }
+            },
+            function(error, response, body) {
+                console.log("===short code saved.===\n",body);
+          })
+  })
+}
 
 //返回互阅列表：直接发送文字及链接
 async function sendGroupRead(topic, bot){
