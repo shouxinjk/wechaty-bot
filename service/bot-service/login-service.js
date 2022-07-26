@@ -147,6 +147,10 @@ function loadWxGroupJobsByNickname(bot, user) {
                     for(let k=0;k<res.length;k++){
                       scheduleJobs(bot, res[k]);
                     }
+                    //设置offse：根据本地文件设置。注意必须在添加本地任务后开始
+                    //尝试读取本地缓存的botId，同时将原botId、当前botId及二维码链接推送到后台，通知重新扫码
+                    let file = config.localFile;
+                    fs.readFile(file, function(err, data){loadOffset(data)});  
                   }else{
                     console.log("no tasks found by nickname.[nickname]",nickname);
                   }
@@ -185,7 +189,7 @@ async function scheduleJobs(bot,jsondata) {
     if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
     //设置群owner信息
     config.rooms[topic].fromBroker = job.broker.id;
-    //config.rooms[topic].fromUser = job.broker.openid;//默认采用系统默认用户
+    //config.rooms[topic].fromUser = job.broker.openid;//默认采用系统默认用户   
     //分别加载任务
     if(job.type == "sendItem"){//根据关键词逐条发送
         schedule.scheduleJob(job.cron, function(){sendItem(topic, tags, bot)}); //推送商品：标题、来源、价格、首图、链接。注意：链接只能发裸链
@@ -196,8 +200,8 @@ async function scheduleJobs(bot,jsondata) {
     }else if(job.type == "sendPaidRead"){
         schedule.scheduleJob(job.cron, function(){sendPaidRead(topic, bot)}); //推送有偿阅读链接：查询金币文章，并推送到指定群
     }else if(job.type == "sendGroupingUrl"){
+        //不需要主动任务，将根据群内消息自动回复
         //schedule.scheduleJob(job.cron, function(){sendGroupingUrl(topic, bot)}); // 推送文章列表链接
-        config.groupingGroups.push(topic);//把互阅群加入列表，等待在接收到信息时自动回复
     }else{
         //do nothing
         console.log("Unkown job.");
@@ -410,6 +414,9 @@ function requestItem(topic,queryJson, room) {
 
                       //修改下标
                       config.rooms[topic].offset = config.rooms[topic].offset+1;
+                      //存储到本地文件
+                      let file = config.localFile;
+                      fs.readFile(file, function(err, data){syncOffset(topic,config.rooms[topic].offset,data)}); 
 
                     }
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
@@ -417,9 +424,15 @@ function requestItem(topic,queryJson, room) {
                     resolve(send)
                   } else {
                     config.rooms[topic].offset =0;//重新发起搜索
+                    //存储到本地文件
+                    let file = config.localFile;
+                    fs.readFile(file, function(err, data){syncOffset(topic,config.rooms[topic].offset,data)});                     
                   }
                 } else {
                   config.rooms[topic].offset =0;//重新发起搜索
+                  //存储到本地文件
+                  let file = config.localFile;
+                  fs.readFile(file, function(err, data){syncOffset(topic,config.rooms[topic].offset,data)});                   
                 }
           })
   })
@@ -427,6 +440,7 @@ function requestItem(topic,queryJson, room) {
 
 
 /**
+ * obsolete. 已废弃。更改为CK推荐
  * send feature
  * 查询主推商品，通过featuredTimestamp记录更新的时间戳
  */
@@ -484,6 +498,7 @@ async function sendFeature(topic,bot) {
 }
 
 /**
+ * obsolete. 已废弃。更改为CK推荐
  * 根据条件查询商品信息并推送
  * 支持应用侧设置搜索条件
  * 参数：
@@ -1052,9 +1067,51 @@ async function syncBot(bot,user,data) {
 
     //将当前登录信息及wechatyid写入本地文件，在重启或重新扫码时能够更新wechatyid
     let file = config.localFile;
-    let dataNew = {botId: bot.id}
+    //let dataNew = {botId: bot.id}
+    data.botId = bot.id;//更新bot id
     // 异步写入数据到文件
-    fs.writeFile(file, JSON.stringify(dataNew), { encoding: 'utf8' }, err => {});    
+    fs.writeFile(file, JSON.stringify(data), { encoding: 'utf8' }, err => {});    
+}
+
+/**
+ * 根据本地文件同步各个群自动推送offset
+ * 本地文件内存储数据为：
+ {
+  offset:{
+    xxx: 12,
+    yyy: 2,
+    zzz: 7
+  }
+ }
+ */
+async function loadOffset(data) {
+    try{
+        data = JSON.parse(data);
+    }catch(err){
+        console.log("failed parse local file content.");
+    }    
+    console.log("try to sync offset info. ",data);
+    Object.keys(config.room.roomList).forEach(function(topic){
+      if(config.room.roomList[topic].offset==0 && data.offset && data.offset[topic]){//仅在offset为0时检查
+        console.log("sync offset..."+topic,data.offset[topic]);
+        config.room.roomList[topic].offset = data.offset[topic];
+      }
+    });
+}
+//将offset更新到本地文件
+async function syncOffset(topic, offset, data) {
+    try{
+        data = JSON.parse(data);
+    }catch(err){
+        console.log("failed parse local file content.");
+    }    
+    console.log("try to sync offset info. ",data);
+    //将指定topic的offset写入本地文件，在重启或重新扫码时能够继续原有的offset
+    let file = config.localFile;
+    if(!data.offset)data.offset={};
+    data.offset[topic] = offset;//更新指定topic的offset
+    // 异步写入数据到文件
+    fs.writeFile(file, JSON.stringify(data), { encoding: 'utf8' }, err => {}); 
 }
 
 //检查是否是图片链接，对于不是图片的则不发送

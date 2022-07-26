@@ -96,13 +96,15 @@ export const onMessage = bot => {
           }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
             let res = sendGroupSubscribe(msg);
             await msg.say(res,msg.talker())
-          }else if (msg.text() === '互阅' || msg.text() === '互' || isUrlValid(msg.text())) {//推送列表链接
+          }else if (msg.text() === '互阅' || msg.text() === '互关' ||msg.text() === '互' || isUrlValid(msg.text()) || 
+                    ((msg.text().indexOf("@")>-1 || msg.text().indexOf("艾特")>-1  || msg.text().indexOf("AT")>-1) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("我")>-1 )) || 
+                    msg.text().indexOf("诚信互")>-1 ) {//推送列表链接
             if(new Date().getTime() - config.groupingTimestamp > config.groupingDuration){
               try{
                   let dailyUrl = new bot.UrlLink({
                     description: '10秒阅读要求，还可以开白转载',
                     thumbnailUrl: 'https://www.biglistoflittlethings.com/static/logo/grouping/default.png',
-                    title: '文章发进列表，阅读更方便',
+                    title: '文章或公众号发进列表，阅读关注更方便',
                     url: 'https://www.biglistoflittlethings.com/ilife-web-wx/publisher/articles.html',
                   });
                   msg.say(dailyUrl, msg.talker())
