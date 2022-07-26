@@ -1118,6 +1118,23 @@ async function syncOffset(topic, offset, data) {
 function isImage(imgUrl){
   if(!imgUrl)return false;
   return imgUrl.endsWith(".jpg") || imgUrl.endsWith(".jpeg") || imgUrl.endsWith(".png") || imgUrl.endsWith(".jpg");
+  /*
+  if(imgUrl.endsWith(".jpg") || imgUrl.endsWith(".jpeg") || imgUrl.endsWith(".png") || imgUrl.endsWith(".jpg")){
+    //需要判断图片文件是否存在：否则会导致程序直接退出
+    return new Promise(function(resolve, reject) {
+        var ImgObj = new Image(); //判断图片是否存在
+        ImgObj.src = imgUrl;
+        ImgObj.onload = function(res) {
+            resolve(res);
+        }
+        ImgObj.onerror = function(err) {
+            reject(err)
+        }
+    }).catch((e) => {}); // 加上这句不会报错（Uncaught (in promise)）    
+  }else{
+    return false;
+  }
+  // */
 }
 
 /**
