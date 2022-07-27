@@ -1100,18 +1100,24 @@ async function loadOffset(data) {
 }
 //将offset更新到本地文件
 async function syncOffset(topic, offset, data) {
-    try{
-        data = JSON.parse(data);
-    }catch(err){
-        console.log("failed parse local file content.");
-    }    
-    console.log("try to sync offset info. ",data);
-    //将指定topic的offset写入本地文件，在重启或重新扫码时能够继续原有的offset
-    let file = config.localFile;
-    if(!data.offset)data.offset={};
-    data.offset[topic] = offset;//更新指定topic的offset
-    // 异步写入数据到文件
-    fs.writeFile(file, JSON.stringify(data), { encoding: 'utf8' }, err => {}); 
+    //topic传递中有可能是buffer，如果为对象则排除
+    if(typeof(topic) === "string"){
+      try{
+          data = JSON.parse(data);
+      }catch(err){
+          console.log("failed parse local file content.");
+      }    
+      console.log("try to sync offset info. ",data);
+      //将指定topic的offset写入本地文件，在重启或重新扫码时能够继续原有的offset
+      let file = config.localFile;
+      if(!data.offset)data.offset={};
+      data.offset[topic] = offset;//更新指定topic的offset
+      // 异步写入数据到文件
+      fs.writeFile(file, JSON.stringify(data), { encoding: 'utf8' }, err => {});       
+    }else{
+      console.log("failed sync offset with topic.",topic);
+    }
+
 }
 
 //检查是否是图片链接，对于不是图片的则不发送
