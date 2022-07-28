@@ -96,8 +96,9 @@ export const onMessage = bot => {
           }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
             let res = sendGroupSubscribe(msg);
             await msg.say(res,msg.talker())
-          }else if (msg.text() === '互阅' || msg.text() === '互关' ||msg.text() === '互' || isUrlValid(msg.text()) || 
+          }else if (msg.text() === '互阅' || msg.text() === '互关' || msg.text() === '互' || isUrlValid(msg.text()) || 
                     ((msg.text().indexOf("@")>-1 || msg.text().indexOf("艾特")>-1  || msg.text().indexOf("AT")>-1) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("我")>-1 )) || 
+                    ((msg.text().indexOf("互关")>-1 || msg.text().indexOf("互阅")>-1 ) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("秒回")>-1 )) || 
                     msg.text().indexOf("诚信互")>-1 ) {//推送列表链接
             if(new Date().getTime() - config.groupingTimestamp > config.groupingDuration){
               try{
