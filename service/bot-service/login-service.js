@@ -1111,9 +1111,14 @@ async function syncOffset(topic, offset, data) {
       //将指定topic的offset写入本地文件，在重启或重新扫码时能够继续原有的offset
       let file = config.localFile;
       if(!data.offset)data.offset={};
-      data.offset[topic] = offset;//更新指定topic的offset
-      // 异步写入数据到文件
-      fs.writeFile(file, JSON.stringify(data), { encoding: 'utf8' }, err => {});       
+      try{
+        data.offset[topic] = offset;//更新指定topic的offset
+        // 异步写入数据到文件
+        fs.writeFile(file, JSON.stringify(data), { encoding: 'utf8' }, err => {});        
+      }catch(err){
+          console.log("failed save local file.",err);
+      }
+       
     }else{
       console.log("failed sync offset with topic.",topic);
     }
