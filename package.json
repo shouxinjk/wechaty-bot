@@ -1,6 +1,6 @@
 {
   "name": "wechaty-getting-started",
-  "version": "1.18.46",
+  "version": "1.18.47",
   "description": "Wechaty conversational SDK getting start template & examples",
   "type": "module",
   "engines": {
