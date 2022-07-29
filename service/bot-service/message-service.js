@@ -90,6 +90,8 @@ export const onMessage = bot => {
         }else{//根据关键字识别：需要严格判断
           if (msg.text() === 'ding') {
             await msg.say('dong dong',msg.talker())
+          }else if (msg.text() === '最新文章' || msg.text() === '置顶文章' || msg.text() === '置顶列表') {//置顶文章列表：推送链接即可
+            sendToppingRead(msg);
           }else if (msg.text() === '互阅发车' || msg.text() === '互阅开车' || msg.text() === '互阅车') {//互月发车：推送链接即可
             let res = sendGroupRead(msg);
             await msg.say(res,msg.talker())
@@ -558,8 +560,8 @@ function requestGroupingArticles(msg) {
                       let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
                       console.log("got box "+k,articles);
                       for(let j=0;j<articles.length;j++){
-                        boxMsg+="\n👉"+articles[j].title;
-                        boxMsg+="\n🔗"+articles[j].url;
+                        boxMsg+="\n"+config.numbers[j]+articles[j].title;
+                        boxMsg+="\n👉"+articles[j].url;
                       }
                       msg.say(boxMsg, msg.talker());
                     }
@@ -616,6 +618,139 @@ function sendGroupReport(msg){
   //直接返回文字信息即可
   var txt = "📈点击查看报告👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
   msg.say(txt, msg.talker());
+}
+
+
+//返回置顶文章列表：直接发送文字及链接
+function sendToppingRead(msg){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
+  console.log('Sending topping read msg to room ' + topic)   
+
+  //需要检查是否有尚未结束互阅车
+  if(config.rooms[topic]&&config.rooms[topic].grouping && config.rooms[topic].grouping.timeFrom && config.rooms[topic].grouping.duration ){
+    var waitMillis = new Date().getTime() - (config.rooms[topic].grouping.timeFrom.getTime()+config.rooms[topic].grouping.duration);
+    if( waitMillis < 0 ){
+      // return "当前车次尚未结束，请加入或"+(Math.floor(-1*waitMillis/1000/60))+"分钟后开始";
+      msg.say("当前车次尚未结束，请加入👆，或"+(Math.floor(-1*waitMillis/1000/60))+"分钟后开始", msg.talker());
+      return;
+    }
+  }
+  //需要检查时间离下一个整点是否足够
+  var next = new Date();
+  next.setHours(next.getHours()+1);
+  next.setMinutes(0);
+  next.setSeconds(0);
+  var spareMillis = next.getTime()-new Date().getTime();
+  if(spareMillis<6*60*1000 && spareMillis>0){
+    // return "请稍等，"+Math.floor(spareMillis/1000/60)+"分钟后开始";
+    msg.say("请稍等，"+Math.floor(spareMillis/1000/60)+"分钟后开始", msg.talker());
+    return;
+  }
+
+    let res = requstToppingRead(msg)
+    try{
+      if(res && res.length>0)
+          msg.say(res, msg.talker());
+    }catch(err){
+      console.log("failed send topping articles.",err);
+    }
+}
+
+//返回置顶互阅列表：直接发送文字及链接
+function requstToppingRead(msg){  
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
+
+  var now = new Date();
+
+  //将链接保存为短链
+  let eventId = crypto.randomUUID();
+  let itemKey = "page_"+eventId;
+  let fromBroker = "system";//TODO 需要替换为当前达人
+  let fromUser = "bot";//固定为机器人
+  let channel = "wechat";
+  //生成code
+  var groupingCode = generateShortCode(eventId);//报数时需要，注意此时code仅用于topping，在后端无对应的组队阅读
+  //起止时间
+  /**
+  var timeFrom = now.getTime();
+  var timeTo = timeFrom + 60*60*1000;//1小时有效
+  let url =  config.sx_wx_api+"/publisher/articles-grouping.html?code="+groupingCode+"&timeFrom="+timeFrom+"&timeTo="+timeTo+"&groupingName="+(now.getHours()+"点"+now.getMinutes()+"分置顶列表");
+  let shortCode = generateShortCode(url);
+  saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);  
+  //**/
+
+  //设置本地互阅会话
+  if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+  config.rooms[topic].grouping.timeFrom = new Date();
+  config.rooms[topic].grouping.duration = 10*60*1000;
+  config.rooms[topic].grouping.code = groupingCode;
+  config.rooms[topic].grouping.page = 0;
+  config.rooms[topic].grouping.articles = {};
+  config.rooms[topic].grouping.name = now.getHours()+"点"+now.getMinutes()+"分置顶列表";
+
+ console.log("try request topping articles. [groupingCode]",config.rooms[topic].grouping.code);
+  return new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxArticle/rest/topping-articles?from=0&to=5&openid=&publisherOpenid=" //仅获取5条
+    request({
+              url: url,
+              method: 'GET'
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got search result.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  if (res && res.length>0) {
+                    let sendtxt = "共"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55";//res.data.reply
+                    //按照pageSize分箱
+                    var boxIndex = 0;
+                    for (let i = 0; i < res.length; i++) {//按照pageSize分箱
+                      boxIndex = Math.floor(i/config.rooms[topic].grouping.pageSize);
+                      if(!config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]]){
+                        config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]] = [];//空白列表
+                      }
+                      var sublist = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]];
+                      sublist.push(res[i]);
+                      console.log("assemble box "+boxIndex,sublist);
+                      config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[boxIndex]] = sublist;
+                    }
+                    // 逐节推送
+                    for(let k=0;k<config.rooms[topic].grouping.names.length&&k<=boxIndex;k++){
+                      let boxMsg = "车厢:"+config.rooms[topic].grouping.names[k] + ",报数格式为: "+config.rooms[topic].grouping.names[k];
+                      let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
+                      for(let j=0;j<articles.length;j++){
+                        boxMsg += " "+((k+1)*10+j+1);
+                      }
+                      
+                      console.log("got box "+k,articles);
+                      for(let j=0;j<articles.length;j++){
+                        boxMsg+="\n"+config.numbers[j]+articles[j].title;
+                        boxMsg+="\n👉"+articles[j].url;
+                      }
+                      msg.say(boxMsg, msg.talker());
+                    }
+
+                    //发送报数提示
+                    //msg.say(sendtxt, msg.talker());
+
+                    //设置阅读结束
+                    setTimeout(function(){
+                      config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//恢复为默认设置，后续可以开始其他互阅任务
+                    },config.rooms[topic].grouping.duration );                      
+
+                    // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
+                    sendtxt = sendtxt.replace(/Smile/g, name)
+                    resolve(sendtxt)
+                  } else {
+                    resolve("")
+                  }
+                } else {
+                  resolve("");
+                }
+          })
+  })
 }
 
 
