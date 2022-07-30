@@ -1236,8 +1236,8 @@ async function syncOffset(topic, offset, data) {
     if(typeof(topic) === "string"){
       try{
           data = JSON.parse(data);
-          delete data.type;
-          delete data.data;
+          // delete data.type;
+          // delete data.data;
       }catch(err){
           console.log("failed parse local file content.");
       }    
