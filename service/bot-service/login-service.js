@@ -638,7 +638,7 @@ function requestFeatureV2(topic, room) {
                     let send = "🆚🔥推荐：";
 
                     var featuredItem = res.data[0];
-                    var item  = JSON.parse(res.data[0].jsonStr);
+                    var item  = JSON.parse(res.data[0].jsonStr.replace(/\n/g,"\\n").replace(/\r/g,"\\r").replace(/<[^>]+>/g,"\\n"));
 
                     if(featuredItem.itemType == "item"){//是单个实例
                       console.log("got board item.");
