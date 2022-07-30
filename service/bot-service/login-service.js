@@ -637,66 +637,102 @@ function requestFeatureV2(topic, room) {
                     let total = 1;
                     let send = "🆚🔥推荐：";
 
+                    var featuredItem = res.data[0];
                     var item  = JSON.parse(res.data[0].jsonStr);
-                    let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
-                    //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
 
-                    let fromBroker = config.rooms[topic].fromBroker;//"system";//TODO 需要替换为当前达人
-                    let fromUser = "bot";//固定为机器人
-                    let channel = "wechat";
+                    if(featuredItem.itemType == "item"){//是单个实例
+                      console.log("got board item.");
+                      let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
+                      //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
 
-                    let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
+                      let fromBroker = config.rooms[topic].fromBroker;//"system";//TODO 需要替换为当前达人
+                      let fromUser = "bot";//固定为机器人
+                      let channel = "wechat";
 
-                    let logo = item.logo?item.logo: item.images[0]
-                    let moreUrl =  config.sx_wx_api+"/index.html";
+                      let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
 
-                    //获得短网址：单个item地址
-                    let eventId = crypto.randomUUID();
-                    let itemKey = item._key;
-                    let shortCode = generateShortCode(url);
-                    saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
-                    let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      let logo = item.logo?item.logo: item.images[0]
+                      let moreUrl =  config.sx_wx_api+"/index.html";
 
-                    //获得短网址：更多items地址
-                    eventId = crypto.randomUUID();
-                    itemKey = "page_"+eventId
-                    shortCode = generateShortCode(moreUrl);
-                    saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
-                    let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      //获得短网址：单个item地址
+                      let eventId = crypto.randomUUID();
+                      let itemKey = item._key;
+                      let shortCode = generateShortCode(url);
+                      saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
+                      let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
 
-                    send += "\n"+text +" "+url_short;
-                    send += "\n\n👀更多请看👉"+moreUrl_short;
-                    
-                    //推送图片及文字消息
-                    if(room && isImage(logo) )sendImage2Room(room, logo);
+                      //获得短网址：更多items地址
+                      eventId = crypto.randomUUID();
+                      itemKey = "page_"+eventId
+                      shortCode = generateShortCode(moreUrl);
+                      saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
+                      let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
 
-                    //推送评价结果：仅推送客观评价指标及客观评价结果
-                    if(item.media){
-                      let mediaKeys = [];
-                      if(item.media.measure)mediaKeys.push("measure");
-                      if(item.media["measure-scheme"])mediaKeys.push("measure-scheme");
-                      if(mediaKeys.length==0){
-                        //do nothing
-                      }else if(mediaKeys.length==1){//仅有一个就直接发送
-                        if(room)sendImage2Room(room, item.media[mediaKeys[0]]);                          
-                      }else{//否则随机发送
-                        let r = Math.floor(Math.random() * 100) % mediaKeys.length; //生成随机数
-                        if(room)sendImage2Room(room, item.media[mediaKeys[r]]);
-                      }                       
+                      send += "\n"+text +" "+url_short;
+                      send += "\n\n👀更多请看👉"+moreUrl_short;
+                      
+                      //推送图片及文字消息
+                      if(room && isImage(logo) )sendImage2Room(room, logo);
+
+                      //推送评价结果：仅推送客观评价指标及客观评价结果
+                      if(item.media){
+                        let mediaKeys = [];
+                        if(item.media.measure)mediaKeys.push("measure");
+                        if(item.media["measure-scheme"])mediaKeys.push("measure-scheme");
+                        if(mediaKeys.length==0){
+                          //do nothing
+                        }else if(mediaKeys.length==1){//仅有一个就直接发送
+                          if(room)sendImage2Room(room, item.media[mediaKeys[0]]);                          
+                        }else{//否则随机发送
+                          let r = Math.floor(Math.random() * 100) % mediaKeys.length; //生成随机数
+                          if(room)sendImage2Room(room, item.media[mediaKeys[r]]);
+                        }                       
+                      }
+
+                      //推荐语
+                      if(item.advice){
+                        let adviceKeys = Object.keys(item.advice);
+                        if(adviceKeys.length==0){
+                          //do nothing
+                        }else if(adviceKeys.length==1){//仅有一个就直接发送
+                          if(room)room.say(item.advice[adviceKeys[0]]);                          
+                        }else{//否则随机发送
+                          let r = Math.floor(Math.random() * 100) % adviceKeys.length; //生成随机数
+                          if(room)room.say(item.advice[adviceKeys[r]]); 
+                        }                       
+                      }  
+                    }else if(featuredItem.itemType == "board"){//是列表board
+                      console.log("got board item.");
+                      send = "✅🔥精选合集：";
+                      let text = item.title;
+
+                      let fromBroker = config.rooms[topic].fromBroker;//"system";//TODO 需要替换为当前达人
+                      let fromUser = "bot";//固定为机器人
+                      let channel = "wechat";
+
+                      let url =  config.sx_wx_api+"/board2-waterfall.html?id="+item.id+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
+
+                      let logo = item.logo;
+
+                      //获得短网址：单个item地址
+                      let eventId = crypto.randomUUID();
+                      let itemKey = "board_"+item.id;
+                      let shortCode = generateShortCode(url);
+                      saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
+                      let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+
+                      send += "\n"+text +" "+url_short;
+                      
+                      //推送图片
+                      if(room && isImage(logo) )sendImage2Room(room, logo);
+                      //推送描述文字
+                      if(item.description && item.description.trim().length>10){
+                        if(room)room.say(item.description); 
+                      }
+                    }else{
+                      console.log("unknonw item type. ignore.",item.itemType);
+                      send = "";
                     }
-
-                    //推荐语
-                    if(item.advice){
-                      let adviceKeys = Object.keys(item.advice);
-                      if(adviceKeys.length==0){
-                        //do nothing
-                      }else if(adviceKeys.length==1){//仅有一个就直接发送
-                        if(room)room.say(item.advice[adviceKeys[0]]);                          
-                      }else{//否则随机发送
-                        let r = Math.floor(Math.random() * 100) % adviceKeys.length; //生成随机数
-                        if(room)room.say(item.advice[adviceKeys[r]]); 
-                      }                       
-                    }  
 
                     //修改下标
                     config.rooms[topic].featuredOffset = config.rooms[topic].featuredOffset + 1;      
