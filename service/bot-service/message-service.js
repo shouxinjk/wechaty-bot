@@ -341,15 +341,33 @@ function requestRobot(keyword, room, msg) {
     let url = config.es_api
     //**
     let postBody = {
+                        "from":0,
+                        "size":1,
+                        "query": {
+                            "match_all": {}
+                        },
+                        "sort": [
+                            { "@timestamp": { "order": "desc" }},
+                            { "_score":   { "order": "desc" }}
+                        ]
+                    }
+    if(keyword && keyword.trim().length>0 && keyword.trim()!='*'){
+        postBody = {
                       "from":0,
-                      "size":3,      
+                      "size":1,      
                       "query": {
                         "query_string": {
                           "query": keyword,
                           "default_field": "full_text"
                         }
-                      }
-                    }
+                      },
+                      "sort": [
+                          { "@timestamp": { "order": "desc" }},
+                          { "_score":   { "order": "desc" }}
+                      ]
+                    }      
+    }
+
     request({
               url: url,
               method: 'POST',
@@ -363,7 +381,7 @@ function requestRobot(keyword, room, msg) {
                   if (res.hits && res.hits.total>0 && res.hits.hits && res.hits.hits.length>0) {
                     //随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
-                    let send = "亲，找到【"+keyword+"】👇";//res.data.reply
+                    let send = "亲，找到 🎁"+keyword+"👇";//res.data.reply
                     for (let i = 0; i < res.hits.hits.length && i<total; i++) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;

@@ -310,15 +310,33 @@ async function sendItem(topic, keywords, bot) {
     console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room)
     //根据设置的关键字构建query
     let query = {
-                      "from":config.rooms[topic].offset,
-                      "size":3,      
-                      "query": {
-                        "query_string": {
-                          "query": keywords,
-                          "default_field": "full_text"
-                        }
+                    "from":config.rooms[topic].offset,
+                    "size":1,
+                    "query": {
+                        "match_all": {}
+                    },
+                    "sort": [
+                        { "@timestamp": { "order": "desc" }},
+                        { "_score":   { "order": "desc" }}
+                    ]
+                }
+    if(keywords && keywords.trim().length>0 && keywords.trim()!='*'){
+        query = {
+                    "from":config.rooms[topic].offset,
+                    "size":1,      
+                    "query": {
+                      "query_string": {
+                        "query": keywords,
+                        "default_field": "full_text"
                       }
-                    }    
+                    },
+                    "sort": [
+                        { "@timestamp": { "order": "desc" }},
+                        { "_score":   { "order": "desc" }}
+                    ]
+                  }      
+    }
+
     //发送文字
     let res = await requestItem(topic,query,room)
     try{
