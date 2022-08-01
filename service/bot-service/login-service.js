@@ -1028,7 +1028,8 @@ function requestToppingRead(topic,room){
 
  console.log("try request topping articles. [groupingCode]",config.rooms[topic].grouping.code);
   return new Promise((resolve, reject) => {
-    let url = config.sx_api+"/wx/wxArticle/rest/topping-articles?from=0&to=5&openid=&publisherOpenid=" //仅获取5条
+    //let url = config.sx_api+"/wx/wxArticle/rest/topping-articles?from=0&to=5&openid=&publisherOpenid=" //仅获取5条
+    let url = config.sx_api+"/wx/wxArticle/rest/pending-articles?from=0&to=5&openid=&publisherOpenid=" //仅获取5条
     request({
               url: url,
               method: 'GET'

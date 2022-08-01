@@ -90,7 +90,7 @@ export const onMessage = bot => {
         }else{//根据关键字识别：需要严格判断
           if (msg.text() === 'ding') {
             await msg.say('dong dong',msg.talker())
-          }else if (msg.text() === '最新文章' || msg.text() === '置顶文章' || msg.text() === '置顶列表') {//置顶文章列表：推送链接即可
+          }else if (msg.text() === '最新文章' || msg.text() === '文章列表' || msg.text() === '文章阅读' || msg.text() === '置顶文章' || msg.text() === '置顶列表') {//置顶文章列表：推送链接即可
             sendToppingRead(msg);
           }else if (msg.text() === '互阅发车' || msg.text() === '互阅开车' || msg.text() === '互阅车') {//互月发车：推送链接即可
             let res = sendGroupRead(msg);
@@ -692,7 +692,8 @@ function requstToppingRead(msg){
 
  console.log("try request topping articles. [groupingCode]",config.rooms[topic].grouping.code);
   return new Promise((resolve, reject) => {
-    let url = config.sx_api+"/wx/wxArticle/rest/topping-articles?from=0&to=5&openid=&publisherOpenid=" //仅获取5条
+    //let url = config.sx_api+"/wx/wxArticle/rest/topping-articles?from=0&to=5&openid=&publisherOpenid=" //仅获取5条
+    let url = config.sx_api+"/wx/wxArticle/rest/pending-articles?from=0&to=5&openid=&publisherOpenid=" //仅获取5条
     request({
               url: url,
               method: 'GET'
