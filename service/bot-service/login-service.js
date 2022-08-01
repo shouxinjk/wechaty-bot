@@ -109,7 +109,7 @@ function checkBrokerByNickname(bot, user) {
                     config.broker = res.data;//将broker写入缓存
                     if(broker.token && broker.token.trim().length>0){
                         console.log("got token.",broker.token);
-                        config.magicCode = broker.token;
+                        config.magicCode += "__"+broker.token;//支持自定义激活口令
                     }else{
                         console.log("no token found.ignore.[nickname]",nickname);
                     }
@@ -880,7 +880,7 @@ function requestGroupingArticles(topic, room) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
+                    let sendtxt = "本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -1040,7 +1040,7 @@ function requestToppingRead(topic,room){
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "共"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55";//res.data.reply
+                    let sendtxt = "共"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱

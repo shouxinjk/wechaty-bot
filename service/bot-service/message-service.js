@@ -21,7 +21,7 @@ export const onMessage = bot => {
   return async function onMessage(msg) {
     // 判断消息来自自己，仅响应激活码
     if (msg.self()){
-        if(msg.room() && config.magicCode && config.magicCode.trim().length>0 && msg.text() === config.magicCode){
+        if(msg.room() && config.magicCode && config.magicCode.trim().length>0 && config.magicCode.split("__").indexOf(msg.text()) >-1 /*&& msg.text() === config.magicCode */ ){
           console.log("got magic code. activate wx group.");
           const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>
 
@@ -541,7 +541,7 @@ function requestGroupingArticles(msg) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "本车共有"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
+                    let sendtxt = "本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -704,7 +704,7 @@ function requstToppingRead(msg){
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "共"+(Math.floor(res.length/config.rooms[topic].grouping.pageSize)+1)+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55";//res.data.reply
+                    let sendtxt = "共"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
