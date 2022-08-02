@@ -1374,6 +1374,8 @@ async function syncOffset(topic, offset, data) {
       if(!data.offset)data.offset={};
       try{
         data.offset[topic] = offset;//更新指定topic的offset
+        if(data.type)delete data.type;
+        if(data.data)delete data.data;
         // 异步写入数据到文件
         fs.writeFile(file, JSON.stringify(data), { encoding: 'utf8' }, err => {});        
       }catch(err){
