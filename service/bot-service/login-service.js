@@ -440,6 +440,9 @@ function requestItem(topic,queryJson, room) {
 
                       //修改下标
                       config.rooms[topic].offset = config.rooms[topic].offset+1;
+                      //修改推送时间戳
+                      config.rooms[topic].autoPushTimestamp = new Date().getTime();
+
                       //存储到本地文件
                       let file = config.localFile;
                       fs.readFile(file, function(err, data){syncOffset(topic,config.rooms[topic].offset,data)}); 
@@ -766,6 +769,8 @@ function requestFeatureV2(topic, room) {
 
                     //修改下标
                     config.rooms[topic].featuredOffset = config.rooms[topic].featuredOffset + 1;      
+                    //修改推送时间戳
+                    config.rooms[topic].autoPushTimestamp = new Date().getTime();
 
                     //从CK删除推送记录：直接根据eventId再次写入即可
                     removeFeatureItem(res.data[0].eventId,
@@ -823,8 +828,12 @@ async function sendGroupRead(topic, bot){
 
     let res = requstGroupRead(topic,room)
     try{
-      if(res && res.length>0)
-          room.say(res)       
+      if(res && res.length>0){
+        room.say(res)  
+        //修改推送时间戳
+        config.rooms[topic].autoPushTimestamp = new Date().getTime();
+      }
+               
     }catch(err){
       console.log("failed send group read msg.",err);
     }
@@ -1029,8 +1038,10 @@ async function sendToppingRead(topic, bot){
 
     let res = await requestToppingRead(topic, room)
     try{
-      if(res && res.length>0)
-          room.say(res) 
+      if(res && res.length>0){
+        room.say(res) 
+      }
+          
     }catch(err){
       console.log("failed send topping articles.",err);
     }
@@ -1116,6 +1127,9 @@ function requestToppingRead(topic,room){
                     //sendtxt = sendtxt.replace(/__howlong/,"5");
                     //room.say(sendtxt);
 
+                    //修改推送时间戳
+                    config.rooms[topic].autoPushTimestamp = new Date().getTime();
+
                     //设置阅读结束
                     setTimeout(function(){
                       config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//恢复为默认设置，后续可以开始其他互阅任务
@@ -1147,8 +1161,12 @@ async function sendPaidRead(topic, bot){
 
     let res = await requestPaidRead(topic)
     try{
-      if(res && res.length>0)
-          room.say(res) 
+      if(res && res.length>0){
+        room.say(res) 
+        //修改推送时间戳
+        config.rooms[topic].autoPushTimestamp = new Date().getTime();        
+      }
+          
     }catch(err){
       console.log("failed send msg  2 room.",err);
     }
