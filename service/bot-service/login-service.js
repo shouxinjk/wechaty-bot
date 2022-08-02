@@ -215,6 +215,7 @@ async function scheduleJobs(bot,jsondata) {
  */
 async function sendMessage(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('Sending daily to room ' + room)
     //发送文字
     try{
@@ -234,6 +235,7 @@ async function sendMessage(topic,bot) {
  */
 async function sendText(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('Sending daily to room ' + room)
     try{
         //let dailyText = await getDaily()
@@ -250,7 +252,14 @@ async function sendText(topic,bot) {
  * 注意：仅pad协议支持，web协议不支持
  */
 async function sendGroupingUrl(topic,bot) {
+    //检查推送时间戳
+    if(config.rooms[topic] && (new Date().getTime() - config.rooms[topic].autoPushTimestamp < config.pushDuration) ){
+      console.log("push msg too frequent. ignore.");
+      return;
+    }
+
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('Sending daily to room ' + room)
     try{
         let dailyUrl = new bot.UrlLink({
@@ -291,6 +300,7 @@ async function sendImage2Room(room, imgUrl) {
  */
 async function sendImage(topic,bot) {
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('Sending daily to room ' + room)
     try{
       //let dailyText = await getDaily()
@@ -313,6 +323,7 @@ async function sendItem(topic, keywords, bot) {
     }
 
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room)
     //根据设置的关键字构建query
     let query = {
@@ -642,6 +653,7 @@ async function sendFeatureV2(topic, bot) {
   }
 
   const room = await bot.Room.find({topic: topic}) //get room by topic
+  if(!room)return;
   console.log('Sending featured item to room2 ' + room, "topic: "+topic)  
   //发送文字
   let res = await requestFeatureV2(topic,room)
@@ -671,7 +683,13 @@ function requestFeatureV2(topic, room) {
                     let send = "🆚🔥推荐：";
 
                     var featuredItem = res.data[0];
-                    var item  = JSON.parse(res.data[0].jsonStr.replace(/\n/g,"\\n").replace(/\r/g,"\\r").replace(/<[^>]+>/g,"\\n"));
+                    var item  = {};
+                    try{
+                      item = JSON.parse(res.data[0].jsonStr.replace(/\n/g,"\\n").replace(/\r/g,"\\r").replace(/<[^>]+>/g,"\\n")
+                                                          .replace(/""\{/g,"{").replace(/\}""/g,"}").replace(/"\{/g,"{").replace(/\}"/g,"}"));//修复poster与article存储错误：这两个字段作为字符串存储，会导致出现额外的双引号
+                    }catch(err){
+                      console.log("failed parse json. ",res.data[0].jsonStr);
+                    }
 
                     if(featuredItem.itemType == "item"){//是单个实例
                       console.log("got board item.");
@@ -824,6 +842,7 @@ async function sendGroupRead(topic, bot){
     }
 
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('Sending group read msg to room ' + room)   
 
     let res = requstGroupRead(topic,room)
@@ -1015,6 +1034,7 @@ async function sendToppingRead(topic, bot){
     }
 
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('try send topping read msg to room ' + room)   
 
     //需要检查是否有尚未结束互阅车
@@ -1157,6 +1177,7 @@ async function sendPaidRead(topic, bot){
     }
         
     const room = await bot.Room.find({topic: topic}) //get the room by topic
+    if(!room)return;
     console.log('Sending paid read msg to room ' + room)   
 
     let res = await requestPaidRead(topic)
@@ -1326,10 +1347,15 @@ async function loadOffset(data) {
         console.log("failed parse local file content.");
     }    
     console.log("try to sync offset info. ",data);
-    Object.keys(config.room.roomList).forEach(function(topic){
-      if(config.room.roomList[topic].offset==0 && data.offset && data.offset[topic]){//仅在offset为0时检查
-        console.log("sync offset..."+topic,data.offset[topic]);
-        config.room.roomList[topic].offset = data.offset[topic];
+    Object.keys(config.rooms).forEach(function(topic){
+      if(config.rooms[topic].offset==-1){//仅在启动时时检查
+        if( data.offset && data.offset[topic]){
+          console.log("sync offset..."+topic,data.offset[topic]);
+          config.rooms[topic].offset = data.offset[topic];
+        }else{
+          console.log("init offset...");
+          config.rooms[topic].offset = 0;          
+        }
       }
     });
 }
@@ -1339,8 +1365,6 @@ async function syncOffset(topic, offset, data) {
     if(typeof(topic) === "string"){
       try{
           data = JSON.parse(data);
-          // delete data.type;
-          // delete data.data;
       }catch(err){
           console.log("failed parse local file content.");
       }    
