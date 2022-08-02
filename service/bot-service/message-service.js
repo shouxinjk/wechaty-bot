@@ -102,7 +102,7 @@ export const onMessage = bot => {
                     ((msg.text().indexOf("@")>-1 || msg.text().indexOf("艾特")>-1  || msg.text().indexOf("AT")>-1) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("我")>-1 )) || 
                     ((msg.text().indexOf("互关")>-1 || msg.text().indexOf("互阅")>-1 ) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("秒回")>-1 )) || 
                     msg.text().indexOf("诚信互")>-1 ) {//推送列表链接
-            if(new Date().getTime() - config.groupingTimestamp > config.groupingDuration){
+            if(config.rooms[topic] && (new Date().getTime() - config.rooms[topic].autoReplyTimestamp > config.groupingDuration) ){ //当前群内自动回复时间超过时间间隔
               try{
                   let dailyUrl = new bot.UrlLink({
                     description: '10秒阅读要求，还可以开白转载',
@@ -118,7 +118,7 @@ export const onMessage = bot => {
                   msg.say(dailyText, msg.talker())
 
                   //更新时间戳
-                  config.groupingTimestamp = new Date().getTime();
+                  config.rooms[topic].autoReplyTimestamp = new Date().getTime();
               }catch(err){
                 console.log("error while send url",err);
               } 
