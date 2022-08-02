@@ -316,8 +316,8 @@ async function sendItem(topic, keywords, bot) {
                         "match_all": {}
                     },
                     "sort": [
-                        { "@timestamp": { "order": "desc" }},
-                        { "_score":   { "order": "desc" }}
+                        { "_score":   { "order": "desc" }},
+                        { "@timestamp": { "order": "desc" }}
                     ]
                 }
     if(keywords && keywords.trim().length>0 && keywords.trim()!='*'){
@@ -331,8 +331,8 @@ async function sendItem(topic, keywords, bot) {
                       }
                     },
                     "sort": [
-                        { "@timestamp": { "order": "desc" }},
-                        { "_score":   { "order": "desc" }}
+                        { "_score":   { "order": "desc" }},
+                        { "@timestamp": { "order": "desc" }}
                     ]
                   }      
     }

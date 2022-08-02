@@ -347,8 +347,8 @@ function requestRobot(keyword, room, msg) {
                             "match_all": {}
                         },
                         "sort": [
-                            { "@timestamp": { "order": "desc" }},
-                            { "_score":   { "order": "desc" }}
+                          { "_score":   { "order": "desc" }},
+                          { "@timestamp": { "order": "desc" }}
                         ]
                     }
     if(keyword && keyword.trim().length>0 && keyword.trim()!='*'){
@@ -362,8 +362,8 @@ function requestRobot(keyword, room, msg) {
                         }
                       },
                       "sort": [
-                          { "@timestamp": { "order": "desc" }},
-                          { "_score":   { "order": "desc" }}
+                        { "_score":   { "order": "desc" }},
+                        { "@timestamp": { "order": "desc" }}
                       ]
                     }      
     }
