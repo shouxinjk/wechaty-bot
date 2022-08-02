@@ -306,6 +306,12 @@ async function sendImage(topic,bot) {
  * 根据关键字搜索商品，并推送
  */
 async function sendItem(topic, keywords, bot) {
+    //检查推送时间戳
+    if(config.rooms[topic] && (new Date().getTime() - config.rooms[topic].autoPushTimestamp < config.pushDuration) ){
+      console.log("push msg too frequent. ignore.");
+      return;
+    }
+
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room)
     //根据设置的关键字构建query
@@ -626,6 +632,12 @@ function requestFeature(topic,queryJson, room) {
  * 从CK查询待推送内容。每次推送一条
  */
 async function sendFeatureV2(topic, bot) {
+  //检查推送时间戳
+  if(config.rooms[topic] && (new Date().getTime() - config.rooms[topic].autoPushTimestamp < config.pushDuration) ){
+    console.log("push msg too frequent. ignore.");
+    return;
+  }
+
   const room = await bot.Room.find({topic: topic}) //get room by topic
   console.log('Sending featured item to room2 ' + room, "topic: "+topic)  
   //发送文字
@@ -800,6 +812,12 @@ function removeFeatureItem(eventId, brokerId, groupType, groupId, groupName,item
 
 //返回互阅列表：直接发送文字及链接
 async function sendGroupRead(topic, bot){
+    //检查推送时间戳
+    if(config.rooms[topic] && (new Date().getTime() - config.rooms[topic].autoPushTimestamp < config.pushDuration) ){
+      console.log("push msg too frequent. ignore.");
+      return;
+    }
+
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending group read msg to room ' + room)   
 
@@ -981,6 +999,12 @@ function sendGroupReport(topic, room){
 
 //返回置顶文章列表：直接发送文字及链接
 async function sendToppingRead(topic, bot){
+    //检查推送时间戳
+    if(config.rooms[topic] && (new Date().getTime() - config.rooms[topic].autoPushTimestamp < config.pushDuration) ){
+      console.log("push msg too frequent. ignore.");
+      return;
+    }
+
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('try send topping read msg to room ' + room)   
 
@@ -1112,6 +1136,12 @@ function requestToppingRead(topic,room){
 
 //返回互阅列表：直接发送文字及链接
 async function sendPaidRead(topic, bot){
+    //检查推送时间戳
+    if(config.rooms[topic] && (new Date().getTime() - config.rooms[topic].autoPushTimestamp < config.pushDuration) ){
+      console.log("push msg too frequent. ignore.");
+      return;
+    }
+        
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     console.log('Sending paid read msg to room ' + room)   
 
