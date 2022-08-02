@@ -67,7 +67,7 @@ function scheduleSendMessage(bot,user){
     //TODO 需要根据登录用户加载 托管群及任务，然后逐个schedule
     console.log('start schedule auto send message')
     let topic="sx临时群";
-    schedule.scheduleJob('0 */5 * * * ?', function(){sendFeature(topic,bot)}); //send every 5 min  
+    schedule.scheduleJob('0 */5 * * * ?', function(){sendItem(topic,"拼多多",bot)}); //send every 5 min  
 }
 /**
 * 启动定时任务: 示例
@@ -385,8 +385,8 @@ function requestItem(topic,queryJson, room) {
                   let res = body;
                   if (res.hits && res.hits.total>0 && res.hits.hits && res.hits.hits.length>0) {
                     //随机组织1-3条，组成一条返回
-                    let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
-                    let send = "🔥好物推荐：";//res.data.reply
+                    let total = 1; // Math.floor(Math.random() * 3);//取1-4条随机
+                    let send = ""; // "🔥好物推荐：";//res.data.reply
                     for (let i = 0; i < res.hits.hits.length && i<total; i++) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
@@ -415,7 +415,17 @@ function requestItem(topic,queryJson, room) {
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
                       let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
 
-                      send += "\n"+text +" "+url_short;
+                      //send += "\n"+text +" "+url_short;
+                      send += item.distributor.name+" "+item.title; // 标题
+                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n【原价】" + item.price.bid; // 原价
+                      //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
+                      send += "\n【售价】" + item.price.sale;
+                      if(item.link.token && item.link.token.trim().length >0){
+                        send += "\n👉 复制 "+item.link.token +" 并打开 "+item.distributor.name;
+                      }else{
+                        send += "\n立即前往👉 " + url_short;
+                      }
+                      
                       send += "\n\n👀更多请看👉"+moreUrl_short;
                       
                       //推送图片及文字消息
@@ -559,9 +569,10 @@ function requestFeature(topic,queryJson, room) {
                   //let res = JSON.parse(body)
                   let res = body;
                   if (res.hits && res.hits.total>0 && res.hits.hits && res.hits.hits.length>0) {
-                    //随机组织1-3条，组成一条返回
+                    // 随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
-                    let send = "🆚🔥推荐：";//res.data.reply
+                    // let send = "🆚🔥推荐：";//res.data.reply
+                    let send = "";
                     for (let i = 0; i < res.hits.hits.length && i<total; i++) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
@@ -591,7 +602,18 @@ function requestFeature(topic,queryJson, room) {
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
                       let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
 
-                      send += "\n"+text +" "+url_short;
+                      //send += "\n"+text +" "+url_short;
+
+                      send += item.distributor.name+" "+item.title; // 标题
+                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n【原价】" + item.price.bid; // 原价
+                      //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
+                      send += "\n【售价】" + item.price.sale;
+                      if(item.link.token && item.link.token.trim().length >0){
+                        send += "\n👉 复制 "+item.link.token +" 并打开 "+item.distributor.name;
+                      }else{
+                        send += "\n立即前往👉 " + url_short;
+                      }
+
                       send += "\n\n👀更多请看👉"+moreUrl_short;
                       
                       //推送图片及文字消息
@@ -680,7 +702,8 @@ function requestFeatureV2(topic, room) {
                   //let res = body;
                   if (res.data && res.data.length>0) {//返回仅一条
                     let total = 1;
-                    let send = "🆚🔥推荐：";
+                    //let send = "🆚🔥推荐：";
+                    let send = "";
 
                     var featuredItem = res.data[0];
                     var item  = {};
@@ -719,7 +742,18 @@ function requestFeatureV2(topic, room) {
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
                       let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
 
-                      send += "\n"+text +" "+url_short;
+                      //send += "\n"+text +" "+url_short;
+
+                      send += item.distributor.name+" "+item.title; // 标题
+                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n【原价】" + item.price.bid; // 原价
+                      //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
+                      send += "\n【售价】" + item.price.sale;
+                      if(item.link.token && item.link.token.trim().length >0){
+                        send += "\n👉 复制 "+item.link.token +" 并打开 "+item.distributor.name;
+                      }else{
+                        send += "\n立即前往👉 " + url_short;
+                      }
+
                       send += "\n\n👀更多请看👉"+moreUrl_short;
                       
                       //推送图片及文字消息
