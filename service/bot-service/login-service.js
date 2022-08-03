@@ -188,7 +188,7 @@ async function scheduleJobs(bot,jsondata) {
     try{
       await room.sync()
     }catch(err){
-      console.log("failed sync room. ignore. ",topic);
+      console.log("failed sync room. ignore. [topic]"+topic , err);
     }
     
     //初始化rooms配置
