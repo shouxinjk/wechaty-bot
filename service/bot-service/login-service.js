@@ -184,7 +184,13 @@ async function scheduleJobs(bot,jsondata) {
         return;
     }
     const room = bot.Room.load(roomId) //注意：这里需要后端同步群聊ID。可以在发送激活码时补充gid信息。另一种方案是在前端查询roomList得到。
-    await room.sync()
+    console.log("try sync room. ",topic);
+    try{
+      await room.sync()
+    }catch(err){
+      console.log("failed sync room. ignore. ",topic);
+    }
+    
     //初始化rooms配置
     if(!config.rooms[topic])config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
     //设置群owner信息
