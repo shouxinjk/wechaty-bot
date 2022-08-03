@@ -420,9 +420,9 @@ function requestRobot(keyword, room, msg) {
                       //send += "\n"+text +" "+url_short;
 
                       send += "\n" + item.distributor.name+" "+item.title; // 标题
-                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n【原价】" + item.price.bid; // 原价
+                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid; // 原价
                       //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
-                      send += "\n【售价】" + item.price.sale;
+                      send += "\n✅ 售价 " + item.price.sale;
                       if(item.link.token && item.link.token.trim().length >0){
                         send += "\n👉 复制 "+item.link.token +" 并打开 "+item.distributor.name;
                       }else{
