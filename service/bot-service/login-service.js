@@ -332,7 +332,7 @@ async function sendItem(topic, keywords, bot) {
       console.log("confilct with ongoing grouping read. ignore.");
       return;    
     } 
-    
+
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     if(!room)return;
     console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room)
@@ -964,7 +964,7 @@ function requstGroupRead(topic,room){
 
   //直接返回文字信息即可
   //TODO 先发送一个通知图片
-  var txt = "🚚整点班车，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟后自动出合集";
+  var txt = "🚚整点班车，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟后自动出合集，限前25篇";
   return txt;
 }
 

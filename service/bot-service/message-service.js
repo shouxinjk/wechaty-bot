@@ -118,6 +118,7 @@ export const onMessage = bot => {
               }
             }else if(isUrlValid(msg.text())){ //支持开车中动态发布文章
               console.log("add new article to grouping.",msg.text());
+              checkBrokerByNicknameForPublishArticle(msg, msg.text().trim());
             }
           }else if (msg.text() === '互阅' || msg.text() === '互关' || msg.text() === '互' || isUrlValid(msg.text()) || 
                     ((msg.text().indexOf("@")>-1 || msg.text().indexOf("艾特")>-1  || msg.text().indexOf("AT")>-1) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("我")>-1 )) || 
@@ -540,7 +541,7 @@ function sendGroupRead(msg){
   },config.rooms[topic].grouping.timeout);
 
   //直接返回文字信息即可
-  var txt = "🚄快车经过，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟自动出合集";
+  var txt = "🚄快车经过，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟自动出合集，限前25篇";
   return txt;
 }
 
@@ -603,7 +604,7 @@ function requestGroupingArticles(msg) {
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
                       sendGroupReport(msg);
-                    }, 1*60*1000/* config.rooms[topic].grouping.timeout*3 res.length*15*1000 */);                    
+                    }, 5*60*1000/* config.rooms[topic].grouping.timeout*3 res.length*15*1000 */);                    
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     sendtxt = sendtxt.replace(/Smile/g, name)
@@ -884,6 +885,147 @@ function syncRoom(topic, roomId) {
                 }
           })
   })
+}
+
+//检查发布链接用户是否已注册
+//用户昵称为msg.talker().name()
+//参数：msg当前对话，url文章地址，已经经过校验
+function checkBrokerByNicknameForPublishArticle(msg,articleUrl) {
+  if(!msg.talker() || !msg.talker().name())
+    return "啊哦，没找到对应的信息，需要先点击上面的链接关注";
+  console.log("try to check broker by nickname. [nickname]",msg.talker().name());
+  return new Promise((resolve, reject) => {
+    let url = config.sx_api+"/mod/broker/rest/brokerByNickname?nickname="+encodeURIComponent(msg.talker().name())
+    request({
+              url: url,
+              method: 'GET'
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got result.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  if(res.status){
+                    //发布文章
+                    submitArticle(msg, res.data, articleUrl);
+                  }else{
+                    resolve("啊哦，好像还没关注哇，点击上面的链接关注并发布文章或公众号哦~~")
+                  }
+                } else {
+                  resolve("啊哦，好像遇到问题了，也可以直接点击上面的链接关注并发布文章或公众号哦~~")
+                }
+          })
+  })
+}
+//发布文章
+function submitArticle(msg, broker, articleUrl){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>    
+  console.log("try to submit article. ",articleUrl,broker);
+  /*return*/ new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxArticle/rest/article"
+    request({
+              url: url,
+              method: 'POST',
+              json:{
+                      url:articleUrl,
+                      broker:broker
+                  }
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("submit article succeed.",body);
+                  //let res = JSON.parse(body)
+                  let res = body;
+                  //反馈消息
+                  if(res.status){
+                    checkArticleGrouping(msg, broker, res.data);
+                  }else{
+                    console.log("submit article failed.");
+                    //do nothing
+                  }
+
+                } else {
+                  console.log("error while publish article",error)
+                }
+          })
+  })  
+}
+//检查是否已经发过文章，一次开车仅允许一篇文章
+function checkArticleGrouping(msg, broker, article){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>    
+  console.log("try to check grouping article. ");
+  /*return*/ new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=1&openid=&code="+config.rooms[topic].grouping.code+"&publisherOpenid="+broker.openid
+    request({
+              url: url,
+              method: 'get',
+              /**
+              json:{
+                      from:0,
+                      to:1,//仅用于判断，1条即可
+                      openid:"",//忽略是否已经阅读
+                      code:config.rooms[topic].grouping.code,//微信群编号
+                      publisherOpenid:broker.openid//发布者 openid：只显示指定发布者的内容
+                    }
+              //*/
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("check grouping article succeed.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  if(res.length==0){//没有则继续添加到grouping
+                    groupingArticle(msg, broker, article)
+                  }else{//提示已经发布了，别瞎折腾了
+                    //反馈消息
+                    let txt = "规则：每人每次仅限一篇";
+                    if(broker.points < 2){
+                      txt += "。阅豆不多了，阅读或关注都可以增加哦~~"
+                    }
+                    msg.say(txt, msg.talker());
+                  }
+                } else {
+                  console.log("error while check grouping article",error)
+                }
+          })
+  })  
+}
+//将文章加入班车
+function groupingArticle(msg, broker, article){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>    
+  console.log("try to grouping article. ",article,broker,config.rooms[topic].grouping);
+  /*return*/ new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxGrouping/rest/grouping"
+    request({
+              url: url,
+              method: 'POST',
+              json:{
+                      code:config.rooms[topic].grouping.code,
+                      timeFrom:new Date().getTime(), //config.rooms[topic].grouping.timeFrom.getTime(),
+                      timeTo: new Date().getTime() + config.rooms[topic].grouping.duration,//config.gourping.timeFrom.getTime()+config.rooms[topic].grouping.duration,
+                      subjectType:'article',
+                      subjectId: article.id
+                    }
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("submit article succeed.",body);
+                  //let res = JSON.parse(body)
+                  let res = body;
+                  //反馈消息
+                  let txt = "文章已加入";
+                  if(broker.points < 2){
+                    txt += "，阅读不足，要多阅读哦~~"
+                  }
+                  msg.say(txt, msg.talker());
+                } else {
+                  console.log("error while grouping article",error)
+                }
+          })
+  })  
 }
 
 
