@@ -541,7 +541,7 @@ function sendGroupRead(msg){
   },config.rooms[topic].grouping.timeout);
 
   //直接返回文字信息即可
-  var txt = "🚄快车经过，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟自动出合集，限前25篇";
+  var txt = "🚄快车经过，发链接加入，或进入列表选择已发文章👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n仅支持公众号文章链接，2分钟自动出合集，限前25篇";
   return txt;
 }
 
@@ -683,14 +683,16 @@ function requestGroupingResult(shortCode, msg){
                   //let res = body;
                   console.log("got grouping result.",res);
                   if (res && res.length>0) { //返回结果为一个列表
-                    let sendtxt = "结果来咯~~";//res.data.reply
+                    let sendtxt = "报告来咯~~";//res.data.reply
                     for (let i = 0; i < res.length; i++) { //逐条组装：文章序号 文章标题 达人昵称 阅读数 回阅数
                       sendtxt += "\n";
                       sendtxt += ((i<config.numbers.length)?config.numbers[i]:(i+1))+" ";
-                      sendtxt += res[i].nickname+":";
+                      sendtxt += res[i].nickname+"：";
                       sendtxt += res[i].title;
+                      //sendtxt += " 新增"+res[i].gotCounts
+                      //sendtxt += "回"+res[i].paidCounts
                       sendtxt += " 增"+(res[i].gotCounts + res[i].gotCounts2)
-                      sendtxt += " 回"+(res[i].paidCounts + res[i].paidCounts2)
+                      sendtxt += "回"+(res[i].paidCounts + res[i].paidCounts2)
                       
                       if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
                         sendtxt += "⚠️";

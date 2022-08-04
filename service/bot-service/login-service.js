@@ -964,7 +964,7 @@ function requstGroupRead(topic,room){
 
   //直接返回文字信息即可
   //TODO 先发送一个通知图片
-  var txt = "🚚整点班车，发文加入👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n2分钟后自动出合集，限前25篇";
+  var txt = "🚚整点班车，发链接加入，或进入列表选择已发文章👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n仅支持公众号文章链接，2分钟自动出合集，限前25篇";
   return txt;
 }
 
