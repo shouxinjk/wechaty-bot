@@ -98,6 +98,27 @@ export const onMessage = bot => {
           }else if (msg.text() === '互关发车' || msg.text() === '互关开车' || msg.text() === '互关车') {//互关发车：推送链接即可
             let res = sendGroupSubscribe(msg);
             await msg.say(res,msg.talker())
+          }else if(config.rooms[topic] && config.rooms[topic].grouping.code && config.rooms[topic].grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
+            const regex = /^\s?[a-zA-Z]\s+\d+/;//报数格式必须是： A 1 2 3 4 5 
+            if(regex.test(msg.text())){//是报数，则予以响应
+              var boxName = msg.text().match(/[a-zA-Z]{1}/g)[0].toUpperCase();//匹配得到分箱
+              var readCounts = msg.text().match(/\d+/g);//匹配得到所有报数
+              console.log("got numbers.",boxName, readCounts);
+              if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
+                readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length == readCounts.length ){
+                checkBrokerByNickname(msg,config.rooms[topic].grouping.articles[boxName],readCounts);
+              }else if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
+                readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length != readCounts.length ){ //只有部分数据,提示补全
+                room.say("报数与文章数不匹配。车厢"+boxName +"共有"+config.rooms[topic].grouping.articles[boxName].length+"篇文章，但报数为" +readCounts.length+"组", msg.talker())
+              }else if(!config.rooms[topic].grouping.articles[boxName] ){ //车厢号错误
+                room.say("车厢号错误。需要按照车厢报数，如：A 11 22 33 44 55", msg.talker())
+              }else{
+                //do nothing
+                room.say("请检查输入，需要包含车厢号及报数，并用空格分隔。如：A 11 22 33 44 55", msg.talker())
+              }
+            }else if(isUrlValid(msg.text())){ //支持开车中动态发布文章
+              console.log("add new article to grouping.",msg.text());
+            }
           }else if (msg.text() === '互阅' || msg.text() === '互关' || msg.text() === '互' || isUrlValid(msg.text()) || 
                     ((msg.text().indexOf("@")>-1 || msg.text().indexOf("艾特")>-1  || msg.text().indexOf("AT")>-1) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("我")>-1 )) || 
                     ((msg.text().indexOf("互关")>-1 || msg.text().indexOf("互阅")>-1 ) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("秒回")>-1 )) || 
@@ -127,27 +148,6 @@ export const onMessage = bot => {
             let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
             let res = await requestRobot(sendText,room, null)
             msg.say(res, msg.talker())
-          }else if(config.rooms[topic] && config.rooms[topic].grouping.code && config.rooms[topic].grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
-            const regex = /^\s?[a-zA-Z]\s+\d+/;//报数格式必须是： A 1 2 3 4 5 
-            if(regex.test(msg.text())){//是报数，则予以响应
-              var boxName = msg.text().match(/[a-zA-Z]{1}/g)[0].toUpperCase();//匹配得到分箱
-              var readCounts = msg.text().match(/\d+/g);//匹配得到所有报数
-              console.log("got numbers.",boxName, readCounts);
-              if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
-                readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length == readCounts.length ){
-                checkBrokerByNickname(msg,config.rooms[topic].grouping.articles[boxName],readCounts);
-              }else if(config.rooms[topic].grouping.articles[boxName] && config.rooms[topic].grouping.articles[boxName].length>0 && 
-                readCounts.length>0 && config.rooms[topic].grouping.articles[boxName].length != readCounts.length ){ //只有部分数据,提示补全
-                room.say("报数与文章数不匹配。车厢"+boxName +"共有"+config.rooms[topic].grouping.articles[boxName].length+"篇文章，但报数为" +readCounts.length+"组", msg.talker())
-              }else if(!config.rooms[topic].grouping.articles[boxName] ){ //车厢号错误
-                room.say("车厢号错误。需要按照车厢报数，如：A 11 22 33 44 55", msg.talker())
-              }else{
-                //do nothing
-                room.say("请检查输入，需要包含车厢号及报数，并用空格分隔。如：A 11 22 33 44 55", msg.talker())
-              }
-
-            }
-
           }          
         }
       }else{//非托管群仅响应。当前不做响应。对于共享群的情况，可以响应激活码
@@ -603,7 +603,7 @@ function requestGroupingArticles(msg) {
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
                       sendGroupReport(msg);
-                    }, 5*60*1000/* config.rooms[topic].grouping.timeout*3 res.length*15*1000 */);                    
+                    }, 1*60*1000/* config.rooms[topic].grouping.timeout*3 res.length*15*1000 */);                    
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     sendtxt = sendtxt.replace(/Smile/g, name)
@@ -643,12 +643,85 @@ function sendGroupReport(msg){
 
   //清空本地缓存：暂时不清空，避免推送报告后不能在群里报数
   //config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+  setTimeout(function(){ //延迟5分钟关闭本次开车
+    config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
+  }, 2*60*1000);    
 
-  //直接返回文字信息即可
-  var txt = "📈点击查看报告👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
-  msg.say(txt, msg.talker());
+  //TODO查询得到本次开车结果并直接展示
+  let res = requestGroupingResult(shortCode, msg)
+  /**
+  try{
+    if(res && res.length>0)
+        msg.say(res, msg.talker());
+  }catch(err){
+    console.log("failed send topping articles.",err);
+  }
+  //**/
 }
 
+
+//返回置顶互阅列表：直接发送文字及链接
+function requestGroupingResult(shortCode, msg){  
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
+  console.log("try request grouping result. [groupingCode]",config.rooms[topic].grouping.code);
+
+  //默认返回列表结果
+  var txt = "📈点击查看明细👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
+
+  return new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxGrouping/rest/groupingResult/"+config.rooms[topic].grouping.code+"/25" //仅获取25条
+    request({
+              url: url,
+              method: 'GET'
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got grouping result.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  console.log("got grouping result.",res);
+                  if (res && res.length>0) { //返回结果为一个列表
+                    let sendtxt = "结果来咯~~";//res.data.reply
+                    for (let i = 0; i < res.length; i++) { //逐条组装：文章序号 文章标题 达人昵称 阅读数 回阅数
+                      sendtxt += "\n";
+                      sendtxt += ((i<config.numbers.length)?config.numbers[i]:(i+1))+" ";
+                      sendtxt += res[i].nickname+":";
+                      sendtxt += res[i].title;
+                      sendtxt += " 增"+(res[i].gotCounts + res[i].gotCounts2)
+                      sendtxt += " 回"+(res[i].paidCounts + res[i].paidCounts2)
+                      
+                      if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
+                        sendtxt += "⚠️";
+                      }else{
+                        //sendtxt += " ❤️";
+                      }
+                      if(res[i].points < 0 ){
+                        sendtxt += "⛽";
+                      }                      
+                    }
+                    
+                    sendtxt += "\n\n" + txt;
+
+                    // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
+                    sendtxt = sendtxt.replace(/Smile/g, name)
+
+                    msg.say(sendtxt, msg.talker());
+                    //resolve(sendtxt)
+
+                  } else {
+                    console.log("no grouping results found.");
+                    //resolve(txt)
+                    msg.say(txt, msg.talker());
+                  }
+                } else {
+                  console.log("error occured while get grouping results.");
+                  //resolve(txt);
+                  msg.say(txt, msg.talker());
+                }
+          })
+  })
+}
 
 //返回置顶文章列表：直接发送文字及链接
 function sendToppingRead(msg){
@@ -840,10 +913,10 @@ function checkBrokerByNickname(msg,articles,readCounts) {
                       costPoints(msg, articles[k],res.data,readCounts[k]);
                     }
                   }else{
-                    resolve("啊哦，需要点击链接扫码关注哦~~")
+                    resolve("啊哦，好像还没关注哇，点击上面的链接关注并发布文章或公众号哦~~")
                   }
                 } else {
-                  resolve("啊哦，出错了，重发试试呢~~")
+                  resolve("啊哦，好像遇到问题了，也可以直接点击上面的链接关注并发布文章或公众号哦~~")
                 }
           })
   })
@@ -851,6 +924,8 @@ function checkBrokerByNickname(msg,articles,readCounts) {
 
 //扣除阅豆
 function costPoints(msg, article,reader,readCount){
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>    
   console.log("try to cost points. ",article,reader,readCount);
   /*return*/ new Promise((resolve, reject) => {
     let url = config.sx_api+"/wx/wxArticle/rest/exposure"
@@ -860,6 +935,7 @@ function costPoints(msg, article,reader,readCount){
               json:{
                       articleId:article.id,
                       readerOpenid:reader.openid,
+                      groupingCode:config.rooms[topic].grouping.code,
                       readCount:readCount
                     }
             },

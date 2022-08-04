@@ -327,7 +327,12 @@ async function sendItem(topic, keywords, bot) {
       console.log("push msg too frequent. ignore.");
       return;
     }
-
+    //需要检查是否有尚未结束互阅车
+    if(config.rooms[topic]&&config.rooms[topic].grouping && config.rooms[topic].grouping.timeFrom && config.rooms[topic].grouping.duration ){
+      console.log("confilct with ongoing grouping read. ignore.");
+      return;    
+    } 
+    
     const room = await bot.Room.find({topic: topic}) //get the room by topic
     if(!room)return;
     console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room)
@@ -679,6 +684,11 @@ async function sendFeatureV2(topic, bot) {
     console.log("push msg too frequent. ignore.");
     return;
   }
+  //需要检查是否有尚未结束互阅车
+  if(config.rooms[topic]&&config.rooms[topic].grouping && config.rooms[topic].grouping.timeFrom && config.rooms[topic].grouping.duration ){
+    console.log("confilct with ongoing grouping read. ignore.");
+    return;    
+  }  
 
   const room = await bot.Room.find({topic: topic}) //get room by topic
   if(!room)return;
