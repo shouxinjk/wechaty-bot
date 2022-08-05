@@ -964,7 +964,7 @@ function requstGroupRead(topic,room){
 
   //直接返回文字信息即可
   //TODO 先发送一个通知图片
-  var txt = "🚚整点班车，发链接加入，或进入列表选择已发文章👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n仅支持公众号文章链接，2分钟自动出合集，限前25篇";
+  var txt = "‼️‼️‼️整点班车，发链接加入，或选择已发文章👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n仅支持公众号文章链接，2分钟自动出合集，限前20篇";
   return txt;
 }
 
@@ -974,11 +974,11 @@ function requestGroupingArticles(topic, room) {
   //获取topic
   console.log("try request grouping articles. [groupingCode]",config.rooms[topic].grouping.code);
   return new Promise((resolve, reject) => {
-    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=25&openid=&publisherOpenid=&code="+config.rooms[topic].grouping.code
+    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=20&openid=&publisherOpenid=&code="+config.rooms[topic].grouping.code
     //**
     let postBody = {
                       "from":0,
-                      "to":25, //需要列表进行控制，不能超过20条，此处默认为25条 
+                      "to":20, //需要列表进行控制，不能超过20条，此处默认为25条 
                       "code":config.rooms[topic].grouping.code,
                       "openid": "",//ignore
                       "publisherOpenid":""//ignore
@@ -994,7 +994,7 @@ function requestGroupingArticles(topic, room) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
+                    let sendtxt = "‼️‼️‼️本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -1033,10 +1033,14 @@ function requestGroupingArticles(topic, room) {
                     sendtxt = sendtxt.replace(/Smile/g, name)
                     resolve(sendtxt)
                   } else {
-                    resolve("一篇文章都没有，稍后再来~~")
+                    config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
+                    room.say("文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~");
+                    resolve("文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~")
                   }
                 } else {
-                  resolve("啊哦，好像出错了，稍等再来~~");
+                  config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
+                  room.say("啊哦，出合集遇到问题，请直接进入列表阅读~~");
+                  resolve("啊哦，出合集遇到问题，请直接进入列表阅读~~")
                 }
           })
   })
@@ -1065,14 +1069,86 @@ function sendGroupReport(topic, room){
   //清空本地缓存：暂时不清空，避免推送报告后不能在群里报数
   //config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
 
+  //查询得到本次开车结果并直接展示
+  let res = requestGroupingResult(shortCode, msg)
+
   //直接返回文字信息即可
+  /**
   var txt = "📈点击查看报告👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
   try{
     room.say(txt);
   }catch(err){
     console.log("failed send group report.",err);
   }
-  
+  //**/
+}
+
+
+//返回置顶互阅列表：直接发送文字及链接
+function requestGroupingResult(shortCode, msg){  
+  //获取topic
+  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
+  console.log("try request grouping result. [groupingCode]",config.rooms[topic].grouping.code);
+
+  //默认返回列表结果
+  var txt = "📈点击查看明细并补漏👇\n"+config.sx_wx_api +"/s.html?s="+shortCode;
+
+  return new Promise((resolve, reject) => {
+    let url = config.sx_api+"/wx/wxGrouping/rest/groupingResult/"+config.rooms[topic].grouping.code+"/20" //仅获取25条
+    request({
+              url: url,
+              method: 'GET'
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("got grouping result.",body);
+                  let res = JSON.parse(body)
+                  //let res = body;
+                  console.log("got grouping result.",res);
+                  if (res && res.length>0) { //返回结果为一个列表
+                    let sendtxt = "‼️‼️‼️报告来咯~~";//res.data.reply
+                    for (let i = 0; i < res.length; i++) { //逐条组装：文章序号 文章标题 达人昵称 阅读数 回阅数
+                      sendtxt += "\n";
+                      sendtxt += ((i<config.numbers.length)?config.numbers[i]:(i+1))+" ";
+                      sendtxt += res[i].nickname+"：";
+                      sendtxt += res[i].title;
+                      //sendtxt += " 新增"+res[i].gotCounts
+                      //sendtxt += "回"+res[i].paidCounts
+                      sendtxt += " 增"+(res[i].gotCounts + res[i].gotCounts2)
+                      sendtxt += "回"+(res[i].paidCounts + res[i].paidCounts2)
+                      
+                      if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
+                        sendtxt += "⚠️";
+                      }else if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) > 0){
+                        sendtxt += "❤️‍🩹";
+                      }else{
+                        //sendtxt += " ❤️";
+                      }
+                      if(res[i].points < 0 ){
+                        sendtxt += "⛽";
+                      }                      
+                    }
+                    
+                    sendtxt += "\n\n" + txt;
+
+                    // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
+                    sendtxt = sendtxt.replace(/Smile/g, name)
+
+                    msg.say(sendtxt, msg.talker());
+                    //resolve(sendtxt)
+
+                  } else {
+                    console.log("no grouping results found.");
+                    //resolve(txt)
+                    msg.say(txt, msg.talker());
+                  }
+                } else {
+                  console.log("error occured while get grouping results.");
+                  //resolve(txt);
+                  msg.say(txt, msg.talker());
+                }
+          })
+  })
 }
 
 //返回置顶文章列表：直接发送文字及链接

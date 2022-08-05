@@ -116,9 +116,13 @@ export const onMessage = bot => {
                 //do nothing
                 room.say("请检查输入，需要包含车厢号及报数，并用空格分隔。如：A 11 22 33 44 55", msg.talker())
               }
-            }else if(isUrlValid(msg.text())){ //支持开车中动态发布文章
-              console.log("add new article to grouping.",msg.text());
-              checkBrokerByNicknameForPublishArticle(msg, msg.text().trim());
+            }else if(msg.text().trim().indexOf("http:")==0 || msg.text().trim().indexOf("https:")==0){ //支持直接发布URL，仅一行url 
+              if(isUrlValid(msg.text())){ //支持开车中动态发布文章
+                console.log("add new article to grouping.",msg.text());
+                checkBrokerByNicknameForPublishArticle(msg,room, msg.text().trim());
+              }else{//其他地址不支持
+                room.say("仅支持公众号文章链接，其他不支持哦~~", msg.talker())
+              }
             }
           }else if (msg.text() === '互阅' || msg.text() === '互关' || msg.text() === '互' || isUrlValid(msg.text()) || 
                     ((msg.text().indexOf("@")>-1 || msg.text().indexOf("艾特")>-1  || msg.text().indexOf("AT")>-1) && (msg.text().indexOf("必回")>-1 || msg.text().indexOf("我")>-1 )) || 
@@ -541,7 +545,7 @@ function sendGroupRead(msg){
   },config.rooms[topic].grouping.timeout);
 
   //直接返回文字信息即可
-  var txt = "🚄快车经过，发链接加入，或进入列表选择已发文章👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n仅支持公众号文章链接，2分钟自动出合集，限前25篇";
+  var txt = "‼️‼️‼️快车经过，发链接加入，或选择已发文章👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n仅支持公众号文章链接，2分钟自动出合集，限前20篇";
   return txt;
 }
 
@@ -551,11 +555,11 @@ function requestGroupingArticles(msg) {
   const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
   console.log("try request grouping articles. [groupingCode]",config.rooms[topic].grouping.code);
   return new Promise((resolve, reject) => {
-    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=25&openid=&publisherOpenid=&code="+config.rooms[topic].grouping.code
+    let url = config.sx_api+"/wx/wxArticle/rest/grouping-articles?from=0&to=20&openid=&publisherOpenid=&code="+config.rooms[topic].grouping.code
     //**
     let postBody = {
                       "from":0,
-                      "to":25, //需要列表进行控制，不能超过20条，此处默认为25条 
+                      "to":20, //需要列表进行控制，不能超过20条，此处默认为25条 
                       "code":config.rooms[topic].grouping.code,
                       "openid": "",//ignore
                       "publisherOpenid":""//ignore
@@ -571,7 +575,7 @@ function requestGroupingArticles(msg) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
+                    let sendtxt = "‼️‼️‼️本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，__howlong分钟后出结果列表。格式为👇\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -610,10 +614,14 @@ function requestGroupingArticles(msg) {
                     sendtxt = sendtxt.replace(/Smile/g, name)
                     resolve(sendtxt)
                   } else {
-                    resolve("一篇文章都没有，先散了吧，等等再来~~")
+                    config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
+                    msg.say("文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~", msg.talker());
+                    resolve("文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~")
                   }
                 } else {
-                  resolve("啊哦，好像出错了~~")
+                  config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
+                  msg.say("啊哦，出合集遇到问题，请直接进入列表阅读~~", msg.talker());
+                  resolve("啊哦，出合集遇到问题，请直接进入列表阅读~~")
                 }
           })
   })
@@ -648,7 +656,7 @@ function sendGroupReport(msg){
     config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
   }, 2*60*1000);    
 
-  //TODO查询得到本次开车结果并直接展示
+  //查询得到本次开车结果并直接展示
   let res = requestGroupingResult(shortCode, msg)
   /**
   try{
@@ -668,10 +676,10 @@ function requestGroupingResult(shortCode, msg){
   console.log("try request grouping result. [groupingCode]",config.rooms[topic].grouping.code);
 
   //默认返回列表结果
-  var txt = "📈点击查看明细👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
+  var txt = "📈点击查看明细并补漏👇\n"+config.sx_wx_api +"/s.html?s="+shortCode;
 
   return new Promise((resolve, reject) => {
-    let url = config.sx_api+"/wx/wxGrouping/rest/groupingResult/"+config.rooms[topic].grouping.code+"/25" //仅获取25条
+    let url = config.sx_api+"/wx/wxGrouping/rest/groupingResult/"+config.rooms[topic].grouping.code+"/20" //仅获取25条
     request({
               url: url,
               method: 'GET'
@@ -683,7 +691,7 @@ function requestGroupingResult(shortCode, msg){
                   //let res = body;
                   console.log("got grouping result.",res);
                   if (res && res.length>0) { //返回结果为一个列表
-                    let sendtxt = "报告来咯~~";//res.data.reply
+                    let sendtxt = "‼️‼️‼️报告来咯~~";//res.data.reply
                     for (let i = 0; i < res.length; i++) { //逐条组装：文章序号 文章标题 达人昵称 阅读数 回阅数
                       sendtxt += "\n";
                       sendtxt += ((i<config.numbers.length)?config.numbers[i]:(i+1))+" ";
@@ -696,6 +704,8 @@ function requestGroupingResult(shortCode, msg){
                       
                       if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
                         sendtxt += "⚠️";
+                      }else if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) > 0){
+                        sendtxt += "❤️‍🩹";
                       }else{
                         //sendtxt += " ❤️";
                       }
@@ -892,7 +902,7 @@ function syncRoom(topic, roomId) {
 //检查发布链接用户是否已注册
 //用户昵称为msg.talker().name()
 //参数：msg当前对话，url文章地址，已经经过校验
-function checkBrokerByNicknameForPublishArticle(msg,articleUrl) {
+function checkBrokerByNicknameForPublishArticle(msg,room,articleUrl) {
   if(!msg.talker() || !msg.talker().name())
     return "啊哦，没找到对应的信息，需要先点击上面的链接关注";
   console.log("try to check broker by nickname. [nickname]",msg.talker().name());
@@ -909,7 +919,7 @@ function checkBrokerByNicknameForPublishArticle(msg,articleUrl) {
                   //let res = body;
                   if(res.status){
                     //发布文章
-                    submitArticle(msg, res.data, articleUrl);
+                    submitArticle(msg,room, res.data, articleUrl);
                   }else{
                     resolve("啊哦，好像还没关注哇，点击上面的链接关注并发布文章或公众号哦~~")
                   }
@@ -920,7 +930,7 @@ function checkBrokerByNicknameForPublishArticle(msg,articleUrl) {
   })
 }
 //发布文章
-function submitArticle(msg, broker, articleUrl){
+function submitArticle(msg,room, broker, articleUrl){
   //获取topic
   const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>    
   console.log("try to submit article. ",articleUrl,broker);
@@ -941,7 +951,7 @@ function submitArticle(msg, broker, articleUrl){
                   let res = body;
                   //反馈消息
                   if(res.status){
-                    checkArticleGrouping(msg, broker, res.data);
+                    checkArticleGrouping(msg,room, broker, res.data);
                   }else{
                     console.log("submit article failed.");
                     //do nothing
@@ -954,7 +964,7 @@ function submitArticle(msg, broker, articleUrl){
   })  
 }
 //检查是否已经发过文章，一次开车仅允许一篇文章
-function checkArticleGrouping(msg, broker, article){
+function checkArticleGrouping(msg,room, broker, article){
   //获取topic
   const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>    
   console.log("try to check grouping article. ");
@@ -979,14 +989,14 @@ function checkArticleGrouping(msg, broker, article){
                   let res = JSON.parse(body)
                   //let res = body;
                   if(res.length==0){//没有则继续添加到grouping
-                    groupingArticle(msg, broker, article)
+                    groupingArticle(msg,room, broker, article)
                   }else{//提示已经发布了，别瞎折腾了
                     //反馈消息
                     let txt = "规则：每人每次仅限一篇";
                     if(broker.points < 2){
                       txt += "。阅豆不多了，阅读或关注都可以增加哦~~"
                     }
-                    msg.say(txt, msg.talker());
+                    room.say(txt, msg.talker());
                   }
                 } else {
                   console.log("error while check grouping article",error)
@@ -995,7 +1005,7 @@ function checkArticleGrouping(msg, broker, article){
   })  
 }
 //将文章加入班车
-function groupingArticle(msg, broker, article){
+function groupingArticle(msg,room, broker, article){
   //获取topic
   const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>    
   console.log("try to grouping article. ",article,broker,config.rooms[topic].grouping);
@@ -1018,11 +1028,11 @@ function groupingArticle(msg, broker, article){
                   //let res = JSON.parse(body)
                   let res = body;
                   //反馈消息
-                  let txt = "文章已加入";
+                  let txt = "文章已加入，请等合集或点击列表链接👆阅读";
                   if(broker.points < 2){
-                    txt += "，阅读不足，要多阅读哦~~"
+                    txt += " ⛽阅豆不足，要多阅哦~~"
                   }
-                  msg.say(txt, msg.talker());
+                  room.say(txt, msg.talker());
                 } else {
                   console.log("error while grouping article",error)
                 }
