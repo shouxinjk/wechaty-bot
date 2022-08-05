@@ -1134,18 +1134,18 @@ function requestGroupingResult(shortCode, msg){
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     sendtxt = sendtxt.replace(/Smile/g, name)
 
-                    msg.say(sendtxt, msg.talker());
+                    room.say(sendtxt);
                     //resolve(sendtxt)
 
                   } else {
                     console.log("no grouping results found.");
                     //resolve(txt)
-                    msg.say(txt, msg.talker());
+                    room.say(txt);
                   }
                 } else {
                   console.log("error occured while get grouping results.");
                   //resolve(txt);
-                  msg.say(txt, msg.talker());
+                  room.say(txt);
                 }
           })
   })

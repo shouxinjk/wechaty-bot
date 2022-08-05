@@ -99,7 +99,7 @@ export const onMessage = bot => {
             let res = sendGroupSubscribe(msg);
             await msg.say(res,msg.talker())
           }else if(config.rooms[topic] && config.rooms[topic].grouping.code && config.rooms[topic].grouping.timeFrom){//如果有互阅开车会话，则响应报数。需要严格匹配格式
-            const regex = /^\s?[a-zA-Z]\s+\d+/;//报数格式必须是： A 1 2 3 4 5 
+            const regex = /^[a-zA-Z]\s?\d+/;//报数格式必须是： A 1 2 3 4 5 
             if(regex.test(msg.text())){//是报数，则予以响应
               var boxName = msg.text().match(/[a-zA-Z]{1}/g)[0].toUpperCase();//匹配得到分箱
               var readCounts = msg.text().match(/\d+/g);//匹配得到所有报数
@@ -121,7 +121,7 @@ export const onMessage = bot => {
                 console.log("add new article to grouping.",msg.text());
                 checkBrokerByNicknameForPublishArticle(msg,room, msg.text().trim());
               }else{//其他地址不支持
-                room.say("仅支持公众号文章链接，其他不支持哦~~", msg.talker())
+                room.say("仅支持公众号文章链接，其他不支持哦，链接前后后也不要有其他文字~~", msg.talker())
               }
             }
           }else if (msg.text() === '互阅' || msg.text() === '互关' || msg.text() === '互' || isUrlValid(msg.text()) || 
@@ -1028,7 +1028,7 @@ function groupingArticle(msg,room, broker, article){
                   //let res = JSON.parse(body)
                   let res = body;
                   //反馈消息
-                  let txt = "文章已加入，请等合集或点击列表链接👆阅读";
+                  let txt = "文章已加入，稍等出合集";
                   if(broker.points < 2){
                     txt += " ⛽阅豆不足，要多阅哦~~"
                   }
@@ -1273,5 +1273,5 @@ function isUrlValid(url) {
     if(url&&url.trim().length>0){
         url = url.split("?")[0];
     }
-    return /^https:\/\/mp\.weixin\.qq\.com\/s\/[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]$/i.test(url);
+    return /^https:\/\/mp\.weixin\.qq\.com\/s\/[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]+$/i.test(url);
 }
