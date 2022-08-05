@@ -121,7 +121,7 @@ export const onMessage = bot => {
                 console.log("add new article to grouping.",msg.text());
                 checkBrokerByNicknameForPublishArticle(msg,room, msg.text().trim());
               }else{//其他地址不支持
-                room.say("仅支持公众号文章链接，其他不支持哦，链接前后后也不要有其他文字~~", msg.talker())
+                room.say("仅支持公众号文章链接，其他不支持哦，链接前后后也不要有其他文字或换行~~", msg.talker())
               }
             }
           }else if (msg.text() === '互阅' || msg.text() === '互关' || msg.text() === '互' || isUrlValid(msg.text()) || 
@@ -575,7 +575,7 @@ function requestGroupingArticles(msg) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "‼️‼️‼️本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，__howlong分钟后出结果列表。格式为👇\nA 11 22 33 44 55";//res.data.reply
+                    let sendtxt = "‼️‼️‼️本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，__howlong分钟后出汇总结果。格式为👇\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -608,7 +608,7 @@ function requestGroupingArticles(msg) {
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
                       sendGroupReport(msg);
-                    }, 5*60*1000/* config.rooms[topic].grouping.timeout*3 res.length*15*1000 */);                    
+                    }, /*  5*60*1000  config.rooms[topic].grouping.timeout*3  */ res.length<4 ? 1*60*1000 : res.length*15*1000);                    
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     sendtxt = sendtxt.replace(/Smile/g, name)
@@ -699,13 +699,13 @@ function requestGroupingResult(shortCode, msg){
                       sendtxt += res[i].title;
                       //sendtxt += " 新增"+res[i].gotCounts
                       //sendtxt += "回"+res[i].paidCounts
-                      sendtxt += " 增"+(res[i].gotCounts + res[i].gotCounts2)
-                      sendtxt += "回"+(res[i].paidCounts + res[i].paidCounts2)
+                      sendtxt += " 被阅"+(res[i].gotCounts + res[i].gotCounts2)
+                      sendtxt += "阅TA"+(res[i].paidCounts + res[i].paidCounts2)
                       
                       if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
                         sendtxt += "⚠️";
                       }else if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) > 0){
-                        sendtxt += "❤️‍🩹";
+                        //sendtxt += "❤️‍🩹";
                       }else{
                         //sendtxt += " ❤️";
                       }

@@ -994,7 +994,7 @@ function requestGroupingArticles(topic, room) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "‼️‼️‼️本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出结果列表";//res.data.reply
+                    let sendtxt = "‼️‼️‼️本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出汇总结果";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -1027,7 +1027,7 @@ function requestGroupingArticles(topic, room) {
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
                       sendGroupReport(topic, room);
-                    },5*60*1000 /*config.rooms[topic].grouping.timeout*2  res.length*15*1000*/);                      
+                    },/* 5*60*1000 config.rooms[topic].grouping.timeout*2 */ res.length<4 ? 1*60*1000 : res.length*15*1000 );                      
 
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     sendtxt = sendtxt.replace(/Smile/g, name)
@@ -1070,7 +1070,7 @@ function sendGroupReport(topic, room){
   //config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//根据grouping模板设置
 
   //查询得到本次开车结果并直接展示
-  let res = requestGroupingResult(shortCode, msg)
+  let res = requestGroupingResult(shortCode, topic, room)
 
   //直接返回文字信息即可
   /**
@@ -1085,9 +1085,8 @@ function sendGroupReport(topic, room){
 
 
 //返回置顶互阅列表：直接发送文字及链接
-function requestGroupingResult(shortCode, msg){  
-  //获取topic
-  const topic = (""+msg.room()).replace(/Room</,"").replace(/>/,"");//直接获取群聊名称，避免等待加载。获取后格式为： Room<xxxx>  
+function requestGroupingResult(shortCode,topic, room){  
+  //获取topic 
   console.log("try request grouping result. [groupingCode]",config.rooms[topic].grouping.code);
 
   //默认返回列表结果
@@ -1114,13 +1113,13 @@ function requestGroupingResult(shortCode, msg){
                       sendtxt += res[i].title;
                       //sendtxt += " 新增"+res[i].gotCounts
                       //sendtxt += "回"+res[i].paidCounts
-                      sendtxt += " 增"+(res[i].gotCounts + res[i].gotCounts2)
-                      sendtxt += "回"+(res[i].paidCounts + res[i].paidCounts2)
+                      sendtxt += " 被阅"+(res[i].gotCounts + res[i].gotCounts2)
+                      sendtxt += "阅TA"+(res[i].paidCounts + res[i].paidCounts2)
                       
                       if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
                         sendtxt += "⚠️";
                       }else if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) > 0){
-                        sendtxt += "❤️‍🩹";
+                        //sendtxt += "❤️‍🩹";
                       }else{
                         //sendtxt += " ❤️";
                       }
