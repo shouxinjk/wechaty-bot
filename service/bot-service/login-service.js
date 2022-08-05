@@ -1114,7 +1114,7 @@ function requestGroupingResult(shortCode,topic, room){
                       //sendtxt += " 新增"+res[i].gotCounts
                       //sendtxt += "回"+res[i].paidCounts
                       sendtxt += " 被阅"+(res[i].gotCounts + res[i].gotCounts2)
-                      sendtxt += "阅TA"+(res[i].paidCounts + res[i].paidCounts2)
+                      sendtxt += " 回阅"+(res[i].paidCounts + res[i].paidCounts2)
                       
                       if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
                         sendtxt += "⚠️";
