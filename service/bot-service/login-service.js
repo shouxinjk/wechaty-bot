@@ -1009,7 +1009,7 @@ function requestGroupingArticles(topic, room) {
                     }
                     // 逐节推送
                     for(let k=0;k<config.rooms[topic].grouping.names.length&&k<=boxIndex;k++){
-                      let boxMsg = "车厢："+config.rooms[topic].grouping.names[k];
+                      let boxMsg = "📌车厢："+config.rooms[topic].grouping.names[k];
                       let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
                       console.log("got box "+k,articles);
                       for(let j=0;j<articles.length;j++){
@@ -1034,8 +1034,8 @@ function requestGroupingArticles(topic, room) {
                     resolve(sendtxt)
                   } else {
                     config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
-                    room.say("文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~");
-                    resolve("文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~")
+                    room.say("⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~");
+                    resolve("⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~")
                   }
                 } else {
                   config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
