@@ -337,11 +337,11 @@ async function isRoomName(bot, msg) {
 
 /**
  * @description 机器人请求接口 处理函数
- * @param {String} keyword 发送文字
+ * @param {String} keywords 发送文字
  * @return {Promise} 相应内容
  */
-function requestRobot(keyword, room, msg) {
-  console.log("try search. [keyword]",keyword);
+function requestRobot(keywords, room, msg) {
+  console.log("try search. [keywords]",keywords);
   return new Promise((resolve, reject) => {
     let url = config.es_api
     //**
@@ -371,14 +371,14 @@ function requestRobot(keyword, room, msg) {
                           { "@timestamp": { "order": "desc" }}
                         ]
                     }
-    if(keyword && keyword.trim().length>0 && keyword.trim()!='*'){
+    if(keywords && keywords.trim().length>0 && keywords.trim()!='*'){
         postBody = {
                       "from":0,
                       "size":1,   
                       /**   
                       "query": {
                         "query_string": {
-                          "query": keyword,
+                          "query": keywords,
                           "default_field": "full_text"
                         }
                       },
@@ -421,7 +421,7 @@ function requestRobot(keyword, room, msg) {
                   if (res.hits && res.hits.total>0 && res.hits.hits && res.hits.hits.length>0) {
                     //随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
-                    let send = "亲，找到 🎁"+keyword+"👇";//res.data.reply
+                    let send = "亲，找到 🎁"+keywords+"👇";//res.data.reply
                     for (let i = 0; i < res.hits.hits.length && i<total; i++) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
@@ -440,7 +440,7 @@ function requestRobot(keyword, room, msg) {
                       let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
 
                       let logo = item.logo?item.logo: item.images[0]
-                      let moreUrl =  config.sx_wx_api+"/index.html?keyword="+encodeURIComponent(keyword);
+                      let moreUrl =  config.sx_wx_api+"/index.html?keywords="+encodeURIComponent(keywords);
 
                       //获得短网址：单个item地址
                       let eventId = crypto.randomUUID();

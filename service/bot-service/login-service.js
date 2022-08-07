@@ -10,6 +10,10 @@ import path from 'path'
 
 // 配置文件
 import config from "../../config/index.js"
+
+// 同步群聊
+import { syncRoomInfo } from "../../src/common.js"
+
 const name = config.name
 /**
  * @method onLogin 当机器人成功登陆后，会触发事件，并会在事件中传递当前登陆机器人的信息
@@ -187,6 +191,7 @@ async function scheduleJobs(bot,jsondata) {
     console.log("try sync room. ",topic);
     try{
       await room.sync()
+      syncRoomInfo(room);
     }catch(err){
       console.log("failed sync room. ignore. [topic]"+topic , err);
     }
