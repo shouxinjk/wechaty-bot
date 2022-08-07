@@ -341,9 +341,18 @@ async function sendItem(topic, keywords, bot) {
                     //"from":config.rooms[topic].offset,
                     "from":0, //采用随机排序
                     "size":1,
+                    /*
                     "query": {
                         "match_all": {}
                     },
+                    //**/
+                    "query": {
+                      "bool": {
+                        "must_not": [{
+                            "exists": { "field" : "status.inactive" }
+                        }]
+                      }
+                    },                      
                     "sort": [
                         {"_script": {
                               "script": "Math.random()",
@@ -359,13 +368,27 @@ async function sendItem(topic, keywords, bot) {
         query = {
                     //"from":config.rooms[topic].offset,
                     "from":0, //采用随机排序
-                    "size":1,      
+                    "size":1,    
+                    /*  
                     "query": {
                       "query_string": {
                         "query": keywords,
                         "default_field": "full_text"
                       }
                     },
+                    //*/
+                    "query": {
+                      "bool": {
+                        "should": [{
+                          "match": {
+                            "full_text": keywords
+                          }
+                        }],
+                        "must_not": [{
+                            "exists": { "field" : "status.inactive" }
+                        }]
+                      }
+                    },                    
                     "sort": [
                         {"_script": {
                               "script": "Math.random()",

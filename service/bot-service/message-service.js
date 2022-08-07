@@ -348,9 +348,18 @@ function requestRobot(keyword, room, msg) {
     let postBody = {
                         "from":0,
                         "size":1,
+                        /**
                         "query": {
                             "match_all": {}
                         },
+                        //**/
+                      "query": {
+                        "bool": {
+                          "must_not": [{
+                              "exists": { "field" : "status.inactive" }
+                          }]
+                        }
+                      },                        
                         "sort": [
                           {"_script": {
                                 "script": "Math.random()",
@@ -365,13 +374,27 @@ function requestRobot(keyword, room, msg) {
     if(keyword && keyword.trim().length>0 && keyword.trim()!='*'){
         postBody = {
                       "from":0,
-                      "size":1,      
+                      "size":1,   
+                      /**   
                       "query": {
                         "query_string": {
                           "query": keyword,
                           "default_field": "full_text"
                         }
                       },
+                      //**/
+                      "query": {
+                        "bool": {
+                          "should": [{
+                            "match": {
+                              "full_text": keywords
+                            }
+                          }],
+                          "must_not": [{
+                              "exists": { "field" : "status.inactive" }
+                          }]
+                        }
+                      },                        
                       "sort": [
                         {"_script": {
                               "script": "Math.random()",
