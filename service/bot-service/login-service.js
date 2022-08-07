@@ -338,19 +338,27 @@ async function sendItem(topic, keywords, bot) {
     console.log('search item by keywrods.[keywords]'+keywords+" [room]"+ room)
     //根据设置的关键字构建query
     let query = {
-                    "from":config.rooms[topic].offset,
+                    //"from":config.rooms[topic].offset,
+                    "from":0, //采用随机排序
                     "size":1,
                     "query": {
                         "match_all": {}
                     },
                     "sort": [
+                        {"_script": {
+                              "script": "Math.random()",
+                              "type": "number",
+                              "order": "asc"
+                            }
+                        },                    
                         { "_score":   { "order": "desc" }},
                         { "@timestamp": { "order": "desc" }}
                     ]
                 }
     if(keywords && keywords.trim().length>0 && keywords.trim()!='*'){
         query = {
-                    "from":config.rooms[topic].offset,
+                    //"from":config.rooms[topic].offset,
+                    "from":0, //采用随机排序
                     "size":1,      
                     "query": {
                       "query_string": {
@@ -359,6 +367,12 @@ async function sendItem(topic, keywords, bot) {
                       }
                     },
                     "sort": [
+                        {"_script": {
+                              "script": "Math.random()",
+                              "type": "number",
+                              "order": "asc"
+                            }
+                        },                     
                         { "_score":   { "order": "desc" }},
                         { "@timestamp": { "order": "desc" }}
                     ]

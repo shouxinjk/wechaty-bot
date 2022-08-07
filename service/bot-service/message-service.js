@@ -352,6 +352,12 @@ function requestRobot(keyword, room, msg) {
                             "match_all": {}
                         },
                         "sort": [
+                          {"_script": {
+                                "script": "Math.random()",
+                                "type": "number",
+                                "order": "asc"
+                              }
+                          },                          
                           { "_score":   { "order": "desc" }},
                           { "@timestamp": { "order": "desc" }}
                         ]
@@ -367,6 +373,12 @@ function requestRobot(keyword, room, msg) {
                         }
                       },
                       "sort": [
+                        {"_script": {
+                              "script": "Math.random()",
+                              "type": "number",
+                              "order": "asc"
+                            }
+                        },                      
                         { "_score":   { "order": "desc" }},
                         { "@timestamp": { "order": "desc" }}
                       ]
