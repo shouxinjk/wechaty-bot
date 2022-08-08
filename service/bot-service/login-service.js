@@ -206,9 +206,23 @@ async function scheduleJobs(bot,jsondata) {
     //config.rooms[topic].fromUser = job.broker.openid;//默认采用系统默认用户   
     //分别加载任务
     if(job.type == "sendItem"){//根据关键词逐条发送
-        schedule.scheduleJob(job.cron, function(){sendItem(topic, tags, bot)}); //推送商品：标题、来源、价格、首图、链接。注意：链接只能发裸链
+        schedule.scheduleJob(job.cron, function(){
+                                                  //sendItem(topic, tags, bot)
+                                                  //随机延后几分钟，模拟随机发送
+                                                  let randomMills = 10+Math.floor(Math.random()*config.pushRandom);
+                                                  setTimeout(function(){
+                                                    sendItem(topic, tags, bot);
+                                                  },randomMills);
+                                                }); //推送商品：标题、来源、价格、首图、链接。注意：链接只能发裸链
     }else if(job.type == "sendFeature"){//发送主推(feature)商品
-        schedule.scheduleJob(job.cron, function(){sendFeatureV2(topic, bot)}); //推送主推商品：能够将最近添加的feature商品推送到
+        schedule.scheduleJob(job.cron, function(){
+                                                  //sendFeatureV2(topic, bot)
+                                                  //随机延后几分钟，模拟随机发送
+                                                  let randomMills = 10+Math.floor(Math.random()*config.pushRandom);
+                                                  setTimeout(function(){
+                                                    sendFeatureV2(topic, bot);
+                                                  },randomMills);                                                  
+                                                }); //推送主推商品：能够将最近添加的feature商品推送到
     }else if(job.type == "sendGroupRead"){
         schedule.scheduleJob(job.cron, function(){sendGroupRead(topic, bot)}); //推送互阅开车信息
     }else if(job.type == "sendToppingRead"){
