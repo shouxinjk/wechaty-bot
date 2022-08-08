@@ -41,7 +41,7 @@ export const fetchRemote  = async function fetchRemoteAPI(URL, postBody, okCallb
 //更新roomInfo
 export const syncRoomInfo = function (room) {
     if(!room.payload || !room.payload.id || !room.payload.ownerId || !room.payload.topic || !room.payload.memberIdList || room.payload.memberIdList.length == 0){
-        console("incomplete room info. ignore.",room);
+        console.log("incomplete room info. ignore.",room);
         return;
     }
     var roomInfo = {
