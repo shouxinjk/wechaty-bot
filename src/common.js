@@ -50,6 +50,10 @@ export const syncRoomInfo = function (room) {
         name: room.payload.topic,
         members: room.payload.memberIdList.length
     }
+
+    if(room.brokerId){
+        roomInfo.brokerId = room.brokerId;
+    }
     console.log("try to sync room info. ", room, roomInfo);
     return new Promise((resolve, reject) => {
         let url = config.sx_api+"/wx/wxGroup/rest/syncByGid"

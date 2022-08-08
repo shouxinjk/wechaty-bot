@@ -8,8 +8,8 @@ import { syncRoomInfo } from "../../src/common.js"
 export const onRoomleave = async user => {
     try {
         console.log('========================onRoomleave👇========================')
-        console.log(`有人离开群聊。TODO：同步群人数`,user)
-        syncRoomInfo(user);
+        console.log(`有人离开群聊。`)
+        //syncRoomInfo(user); 
     } catch (error) {
         console.log(`onRoomleave：${error}`)
     }

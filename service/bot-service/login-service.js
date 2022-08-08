@@ -191,6 +191,9 @@ async function scheduleJobs(bot,jsondata) {
     console.log("try sync room. ",topic);
     try{
       await room.sync()
+      if(room &&  config.broker &&  config.broker.id){
+        room.brokerId = config.broker.id; //添加所属brokerId
+      }
       syncRoomInfo(room);
     }catch(err){
       console.log("failed sync room. ignore. [topic]"+topic , err);
@@ -1076,7 +1079,7 @@ function requestGroupingArticles(topic, room) {
                     resolve(sendtxt)
                   } else {
                     config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
-                    room.say("⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~");
+                    //room.say("⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~");
                     resolve("⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~")
                   }
                 } else {
@@ -1529,6 +1532,8 @@ async function loadOffset(data) {
 //将offset更新到本地文件
 async function syncOffset(topic, offset, data) {
     //topic传递中有可能是buffer，如果为对象则排除
+    //当前采用随机抽样，不需要维持offset
+    /**
     if(typeof(topic) === "string"){
       try{
           data = JSON.parse(data);
@@ -1552,6 +1557,7 @@ async function syncOffset(topic, offset, data) {
     }else{
       console.log("failed sync offset with topic.",topic);
     }
+    //**/
 
 }
 
