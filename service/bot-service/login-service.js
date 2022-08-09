@@ -476,14 +476,16 @@ function requestItem(topic,queryJson, room) {
                       let itemKey = item._key;
                       let shortCode = generateShortCode(url);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
-                      let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      //let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      let url_short = config.sx_wx_api2 + shortCode;
 
                       //获得短网址：更多items地址
                       eventId = crypto.randomUUID();
                       itemKey = "page_"+eventId
                       shortCode = generateShortCode(moreUrl);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
-                      let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      //let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      let moreUrl_short = config.sx_wx_api2 + shortCode;
 
                       //send += "\n"+text +" "+url_short;
                       send += item.distributor.name+" "+item.title; // 标题
@@ -808,14 +810,16 @@ function requestFeatureV2(topic, room) {
                       let itemKey = item._key;
                       let shortCode = generateShortCode(url);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
-                      let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      //let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      let url_short = config.sx_wx_api2 + shortCode;
 
                       //获得短网址：更多items地址
                       eventId = crypto.randomUUID();
                       itemKey = "page_"+eventId
                       shortCode = generateShortCode(moreUrl);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
-                      let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      //let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      let moreUrl_short = config.sx_wx_api2 + shortCode;
 
                       //send += "\n"+text +" "+url_short;
 
@@ -879,7 +883,7 @@ function requestFeatureV2(topic, room) {
                       let itemKey = "board_"+item.id;
                       let shortCode = generateShortCode(url);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
-                      let url_short = config.sx_wx_api +"/s.html?s="+shortCode;
+                      let url_short = config.sx_wx_api2 + shortCode;
 
                       send += "\n"+text +" "+url_short;
                       
@@ -1023,7 +1027,7 @@ function requstGroupRead(topic,room){
 
   //直接返回文字信息即可
   //TODO 先发送一个通知图片
-  var txt = "‼️‼️‼️整点班车，发链接加入，或选择已发文章👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n仅支持公众号文章链接，2分钟自动出合集，限前20篇";
+  var txt = "📣阅读开始，发链接加入。每人一篇，2分钟出合集\n"+config.sx_wx_api2 +shortCode;
   return txt;
 }
 
@@ -1053,7 +1057,7 @@ function requestGroupingArticles(topic, room) {
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "‼️‼️‼️本车共有"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节报数，格式为：\nA 11 22 33 44 55\n__howlong分钟后出汇总结果";//res.data.reply
+                    let sendtxt = "🚩本轮共"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"合集，请阅读，__howlong分钟后汇总结果。报数格式：\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -1068,7 +1072,7 @@ function requestGroupingArticles(topic, room) {
                     }
                     // 逐节推送
                     for(let k=0;k<config.rooms[topic].grouping.names.length&&k<=boxIndex;k++){
-                      let boxMsg = "📌车厢："+config.rooms[topic].grouping.names[k];
+                      let boxMsg = "📍合集："+config.rooms[topic].grouping.names[k];
                       let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
                       console.log("got box "+k,articles);
                       for(let j=0;j<articles.length;j++){
@@ -1149,7 +1153,7 @@ function requestGroupingResult(shortCode,topic, room){
   console.log("try request grouping result. [groupingCode]",config.rooms[topic].grouping.code);
 
   //默认返回列表结果
-  var txt = "📈点击查看明细并补漏👇\n"+config.sx_wx_api +"/s.html?s="+shortCode;
+  var txt = "📈点击查看明细并补漏👇\n"+config.sx_wx_api2 + shortCode;
 
   return new Promise((resolve, reject) => {
     let url = config.sx_api+"/wx/wxGrouping/rest/groupingResult/"+config.rooms[topic].grouping.code+"/20" //仅获取25条
@@ -1164,19 +1168,22 @@ function requestGroupingResult(shortCode,topic, room){
                   //let res = body;
                   console.log("got grouping result.",res);
                   if (res && res.length>0) { //返回结果为一个列表
-                    let sendtxt = "‼️‼️‼️报告来咯~~";//res.data.reply
+                    let sendtxt = "🏁报告来咯，本轮结束~~";//res.data.reply
                     for (let i = 0; i < res.length; i++) { //逐条组装：文章序号 文章标题 达人昵称 阅读数 回阅数
                       sendtxt += "\n";
                       sendtxt += ((i<config.numbers.length)?config.numbers[i]:(i+1))+" ";
-                      sendtxt += res[i].nickname+"：";
                       sendtxt += res[i].title;
+                      //sendtxt += " 🉐️"+(res[i].gotCounts + res[i].gotCounts2)
+
+                      sendtxt += "\n👉"+res[i].nickname;
+                      //sendtxt += " 👀"+(res[i].paidCounts + res[i].paidCounts2)
                       //sendtxt += " 新增"+res[i].gotCounts
                       //sendtxt += "回"+res[i].paidCounts
-                      sendtxt += " 被阅"+(res[i].gotCounts + res[i].gotCounts2)
-                      sendtxt += " 回阅"+(res[i].paidCounts + res[i].paidCounts2)
+                      sendtxt += " 📥"+(res[i].gotCounts + res[i].gotCounts2)
+                      sendtxt += "📤"+(res[i].paidCounts + res[i].paidCounts2)
                       
                       if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) < 0 ){
-                        sendtxt += "⚠️";
+                        sendtxt += "☹️";
                       }else if(res[i].paidCounts + res[i].paidCounts2 - (res[i].gotCounts + res[i].gotCounts2) > 0){
                         //sendtxt += "❤️‍🩹";
                       }else{
@@ -1281,7 +1288,7 @@ function requestToppingRead(topic,room){
   config.rooms[topic].grouping.code = groupingCode;
   config.rooms[topic].grouping.page = 0;
   config.rooms[topic].grouping.articles = {};
-  config.rooms[topic].grouping.name = now.getHours()+"点"+now.getMinutes()+"分置顶列表";
+  config.rooms[topic].grouping.name = now.getHours()+"点"+now.getMinutes()+"分合集";
 
  console.log("try request topping articles. [groupingCode]",config.rooms[topic].grouping.code);
   return new Promise((resolve, reject) => {
@@ -1297,7 +1304,7 @@ function requestToppingRead(topic,room){
                   let res = JSON.parse(body)
                   //let res = body;
                   if (res && res.length>0) {
-                    let sendtxt = "共"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"节，请逐节阅读报数，格式为：\nA 11 22 33 44 55";//res.data.reply
+                    let sendtxt = "共"+(Math.floor((res.length+config.rooms[topic].grouping.pageSize-1)/config.rooms[topic].grouping.pageSize))+"合集，请阅读报数，格式为：\nA 11 22 33 44 55";//res.data.reply
                     //按照pageSize分箱
                     var boxIndex = 0;
                     for (let i = 0; i < res.length; i++) {//按照pageSize分箱
@@ -1312,7 +1319,7 @@ function requestToppingRead(topic,room){
                     }
                     // 逐节推送
                     for(let k=0;k<config.rooms[topic].grouping.names.length&&k<=boxIndex;k++){
-                      let boxMsg = "文章阅读:"+config.rooms[topic].grouping.names[k] + ",报数格式为: "+config.rooms[topic].grouping.names[k];
+                      let boxMsg = "合集:"+config.rooms[topic].grouping.names[k] + ",报数格式为: "+config.rooms[topic].grouping.names[k];
                       let articles = config.rooms[topic].grouping.articles[config.rooms[topic].grouping.names[k]];
                       for(let j=0;j<articles.length;j++){
                         boxMsg += " "+((k+1)*10+j+1);
