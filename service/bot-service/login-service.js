@@ -890,7 +890,7 @@ function requestFeatureV2(topic, room) {
                       //推送图片
                       if(room && isImage(logo) )sendImage2Room(room, logo);
                       //推送描述文字
-                      if(item.description && item.description.trim().length>10){
+                      if(item.description && item.description.trim().length>2){
                         if(room)room.say(item.description); 
                       }
                     }else{
