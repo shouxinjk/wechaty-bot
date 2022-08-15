@@ -43,8 +43,9 @@ export const onMessage = bot => {
 
     //仅处理文本消息
     if (msg.type() == bot.Message.Type.Text) {//打印到控制台
-      console.log("=============New  Message================")
+      //console.log("=============New  Message================")
       console.log(`msg : ${msg}`)
+      /**
       console.log(
         `from id: ${msg.talker() ? msg.talker().name() : null}: ${msg.talker() ? msg.talker().id : null
         }`
@@ -52,9 +53,10 @@ export const onMessage = bot => {
       console.log(`to: ${msg.listener()}`)
       console.log(`text: ${msg.text()}`)
       console.log(`room: ${msg.room()}`)
+      //**/
       //console.log("=============End of New Message================")      
     }else{
-      console.log("非文本消息，忽略.")
+      //console.log("非文本消息，忽略.")
       return;
     }
 
