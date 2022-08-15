@@ -36,7 +36,43 @@ export const fetchRemote  = async function fetchRemoteAPI(URL, postBody, okCallb
 }
 
 
+//发送信息到运营群：运营团队收到新内容提示
+//发送卡片：其链接为图片地址
+export const sendWebHook = function (title,description,url,imgUrl){
+    //推动图文内容到企业微信群，便于转发
+    var msg = {
+            "msgtype": "news",
+            "news": {
+               "articles" : [
+                   {
+                       "title" : title,
+                       "description" : description,
+                       "url" : url,
+                       "picurl" : imgUrl
+                   }
+                ]
+            }
+        };
 
+    //推送到企业微信
+    console.log("\n===try to sent webhook msg. ===\n",msg);  
+    return new Promise((resolve, reject) => {
+        let url = config.wechat_cp_api+"/wework/ilife/notify-cp-company-broker"
+        request({
+              url: url,
+              method: 'POST',
+              json: msg
+            },
+            function(error, response, body) {
+                if (!error && response.statusCode == 200) {
+                  console.log("\n=== webhook message sent. ===\n",body);
+                } else {
+                  // do nothing
+                }
+          })
+    })
+
+}
 
 //更新roomInfo
 export const syncRoomInfo = function (room) {

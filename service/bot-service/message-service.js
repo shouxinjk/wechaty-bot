@@ -13,7 +13,7 @@ import path from 'path'
 // 配置文件
 import config from "../../config/index.js"
 // 同步群聊
-import { syncRoomInfo } from "../../src/common.js"
+import { syncRoomInfo,sendWebHook } from "../../src/common.js"
 
 // 机器人名字
 const name = config.name
@@ -467,9 +467,9 @@ function requestRobot(keywords, room, msg) {
                       //send += "\n"+text +" "+url_short;
 
                       send += "\n" + item.distributor.name+" "+item.title; // 标题
-                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid; // 原价
+                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):""); // 原价
                       //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
-                      send += "\n✅ 售价 " + item.price.sale;
+                      send += "\n✅ 售价 " + item.price.sale+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):"");
                       if(item.link.token && item.link.token.trim().length >0){
                         send += "\n👉 复制 "+item.link.token +" 并打开 "+item.distributor.name;
                       }else{
@@ -942,7 +942,9 @@ function syncRoom(topic, room) {
                     console.log("sync done. try to schedule jobs...");
                     for(let k=0;k<res.task.length;k++){
                       scheduleJobs(room, res.task[k]);
-                    }                    
+                    }     
+                    //通知启动成功：在定时任务自动启动时该通知能帮助查看bot状态
+                    sendWebHook("云助手已启动"+res.task.length+"项任务","将通过默认达人自动分发选品","https://www.biglistoflittlethings.com/ilife-web-wx/broker/bot.html","https://www.biglistoflittlethings.com/static/icon/robot1.png");                                   
                   }else{
                     console.log("sync done. no jobs to schedule");
                   }
@@ -1536,9 +1538,9 @@ function requestItem(topic,queryJson, room) {
 
                       //send += "\n"+text +" "+url_short;
                       send += item.distributor.name+" "+item.title; // 标题
-                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid; // 原价
+                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):""); // 原价
                       //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
-                      send += "\n✅ 售价 " + item.price.sale;
+                      send += "\n✅ 售价 " + item.price.sale+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):"");
                       if(item.link.token && item.link.token.trim().length >0){
                         send += "\n👉 复制 "+item.link.token +" 并打开 "+item.distributor.name;
                       }else{
@@ -1686,9 +1688,9 @@ function requestFeatureV2(topic, room) {
                       //send += "\n"+text +" "+url_short;
 
                       send += item.distributor.name+" "+item.title; // 标题
-                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid; // 原价
+                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):""); // 原价
                       //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
-                      send += "\n✅ 售价 " + item.price.sale;
+                      send += "\n✅ 售价 " + item.price.sale+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):"");
                       if(item.link.token && item.link.token.trim().length >0){
                         send += "\n👉 复制 "+item.link.token +" 并打开 "+item.distributor.name;
                       }else{
@@ -1747,7 +1749,7 @@ function requestFeatureV2(topic, room) {
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
                       let url_short = config.sx_wx_api2 + shortCode;
 
-                      send += "\n"+text +" "+url_short;
+                      send += "\n"+text +"\n立即前往👉"+url_short;
                       
                       //推送图片
                       if(room && isImage(logo) )sendImage2Room(room, logo);
