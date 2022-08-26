@@ -250,10 +250,10 @@ async function sendMessage(topic,bot) {
     //发送文字
     try{
         let txtMsg = "该交周报了，没交的话，我隔5分钟来问一次";
-        room.say(txtMsg)
+        sendText2Room(room, txtMsg)
         //发送图片
         let imageMsg = FileBox.fromUrl('https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png')
-        room.say(imageMsg)   
+        sendText2Room(room, imageMsg)   
     }catch(err){
       console.log("error while send msg",err);
     }  
@@ -270,7 +270,30 @@ async function sendText(topic,bot) {
     try{
         //let dailyText = await getDaily()
         let dailyText = "该交周报了，没交的话，我隔5分钟来问一次";
-        room.say(dailyText)
+        const member = await room.member({name: config.broker.nickname}) //需要确认是否在群里，如果不在就不能发
+        if(member){
+          room.say(dailyText)  
+        }else{
+          console.log("bot not in target room. skipped.");
+        }         
+    }catch(err){
+      console.log("error while send text",err);
+    }     
+}
+
+/**
+ * send text message
+ * test 
+ */
+async function sendText2Room(room,text) {
+    console.log('Sending text to room ' + room)
+    try{
+        const member = await room.member({name: config.broker.nickname}) //需要确认是否在群里，如果不在就不能发
+        if(member){
+          room.say(text)  
+        }else{
+          console.log("bot not in target room. skipped.");
+        }         
     }catch(err){
       console.log("error while send text",err);
     }     
@@ -298,12 +321,12 @@ async function sendGroupingUrl(topic,bot) {
           title: '文章发进列表，方便阅读',
           url: 'https://www.biglistoflittlethings.com/ilife-web-wx/publisher/articles.html',
         });
-        room.say(dailyUrl)
+        sendText2Room(room,dailyUrl);
 
         //发送一条提示语：随机获取
         let randomIndex = Math.floor(Math.random()* config.tips.length);
         let dailyText = config.tips[randomIndex];//"群里阅读少，加入列表可以让更多人看到哦~~";
-        room.say(dailyText)
+        sendText2Room(room,dailyText);
     }catch(err){
       console.log("error while send url",err);
     }         
@@ -317,9 +340,41 @@ async function sendImage2Room(room, imgUrl) {
     //发送图片
     try{
       let imageMsg = FileBox.fromUrl(imgUrl)
-      room.say(imageMsg)       
+      const member = await room.member({name: config.broker.nickname}) //需要确认是否在群里，如果不在就不能发
+      if(member){
+        room.say(imageMsg)    
+      }else{
+        console.log("bot not in target room. skipped.");
+      }      
     }catch(err){
       console.log("failed send img 2 room",err)
+    }
+
+}
+
+/**
+ * send url info to room
+   URLInfo:
+    {
+      description: description,
+      thumbnailUrl: thumbnailUrl,
+      title: title,
+      url: url,
+    }
+ */
+async function sendUrl2Room(room, urlInfo) {
+    console.log('Sending url info to room ' + room, urlInfo)
+    //发送图片
+    try{
+      let urlLink = new UrlLink(urlInfo);
+      const member = await room.member({name: config.broker.nickname}) //需要确认是否在群里，如果不在就不能发
+      if(member){
+        room.say(urlLink)    
+      }else{
+        console.log("bot not in target room. skipped.");
+      }      
+    }catch(err){
+      console.log("failed send url info 2 room",err)
     }
 
 }
@@ -335,7 +390,12 @@ async function sendImage(topic,bot) {
     try{
       //let dailyText = await getDaily()
       const dailyText = FileBox.fromUrl('https://www.biglistoflittlethings.com/static/logo/distributor/ilife.png')
-      room.say(dailyText)
+      const member = await room.member({name: config.broker.nickname}) //需要确认是否在群里，如果不在就不能发
+      if(member){
+        room.say(dailyText)   
+      }else{
+        console.log("bot not in target room. skipped.");
+      }       
     }catch(err){
       console.log("failed send img",err)
     }
@@ -428,11 +488,7 @@ async function sendItem(topic, keywords, bot) {
 
     //发送文字
     let res = await requestItem(topic,query,room)
-    try{
-      room.say(res)    
-    }catch(err){
-      console.log("failed send item",err)
-    }
+    sendText2Room(room, res);
 }
 
 /**
@@ -459,6 +515,7 @@ function requestItem(topic,queryJson, room) {
                     //随机组织1-3条，组成一条返回
                     let total = 1; // Math.floor(Math.random() * 3);//取1-4条随机
                     let send = ""; // "🔥好物推荐：";//res.data.reply
+                    let urlInfo = {}; //组织URL卡片发送
                     for (let i = 0; i < res.hits.hits.length && i<total; i++) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
@@ -502,6 +559,11 @@ function requestItem(topic,queryJson, room) {
                       
                       send += "\n\n👀更多请看👉"+moreUrl_short;
                       
+                      urlInfo.title = item.title;
+                      urlInfo.description = item.distributor.name + item.tagging +" "+ item.tags;
+                      urlInfo.thumbnailUrl = item.logo?item.logo.replace(/\.avif/,""):item.images[0].replace(/\.avif/,"");
+                      urlInfo.url = url_short;
+
                       //推送图片及文字消息
                       if(room && isImage(logo) )sendImage2Room(room, logo);
 
@@ -525,11 +587,11 @@ function requestItem(topic,queryJson, room) {
                         let adviceKeys = Object.keys(item.advice);
                         if(adviceKeys.length==0){
                           //do nothing
-                        }else if(adviceKeys.length==1){//仅有一个就直接发送
-                          if(room)room.say(item.advice[adviceKeys[0]]);                          
+                        }else if(adviceKeys.length==1){//仅有一个就直接发送     
+                          if(room)sendText2Room(room,item.advice[adviceKeys[0]]);                  
                         }else{//否则随机发送
                           let r = Math.floor(Math.random() * 100) % adviceKeys.length; //生成随机数
-                          if(room)room.say(item.advice[adviceKeys[r]]); 
+                          if(room)sendText2Room(room,item.advice[adviceKeys[r]]); 
                         }                       
                       }  
 
@@ -543,6 +605,10 @@ function requestItem(topic,queryJson, room) {
                       fs.readFile(file, function(err, data){syncOffset(topic,config.rooms[topic].offset,data)}); 
 
                     }
+
+                    //随机发送URL卡片或文字：not ready，需要通过bot.urllink构建链接卡片
+                    //sendUrl2Room(room, urlInfo);
+
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
                     resolve(send)
@@ -618,7 +684,7 @@ async function sendFeature(topic,bot) {
     //发送文字
     let res = await requestFeature(topic,query,room)
     if(room && res && res.length>"好物推荐：".length)
-        room.say(res)    
+        sendText2Room(room,res);   
 }
 
 /**
@@ -714,10 +780,10 @@ function requestFeature(topic,queryJson, room) {
                         if(adviceKeys.length==0){
                           //do nothing
                         }else if(adviceKeys.length==1){//仅有一个就直接发送
-                          if(room)room.say(item.advice[adviceKeys[0]]);                          
+                          if(room)sendText2Room(room,item.advice[adviceKeys[0]]);                          
                         }else{//否则随机发送
                           let r = Math.floor(Math.random() * 100) % adviceKeys.length; //生成随机数
-                          if(room)room.say(item.advice[adviceKeys[r]]); 
+                          if(room)sendText2Room(room,item.advice[adviceKeys[r]]); 
                         }                       
                       }  
 
@@ -758,8 +824,10 @@ async function sendFeatureV2(topic, bot) {
   console.log('Sending featured item to room2 ' + room, "topic: "+topic)  
   //发送文字
   let res = await requestFeatureV2(topic,room)
-  if(room && res && res.length>"好物推荐：".length)
-      room.say(res) 
+  if(room && res && res.length>"好物推荐：".length){
+    sendText2Room(room,res); 
+  }
+      
 }
 function requestFeatureV2(topic, room) {
   console.log('request featured item to room2 ' + room, "topic: "+topic)  
@@ -861,10 +929,10 @@ function requestFeatureV2(topic, room) {
                         if(adviceKeys.length==0){
                           //do nothing
                         }else if(adviceKeys.length==1){//仅有一个就直接发送
-                          if(room)room.say(item.advice[adviceKeys[0]]);                          
+                          if(room)sendText2Room(room,item.advice[adviceKeys[0]]);                       
                         }else{//否则随机发送
                           let r = Math.floor(Math.random() * 100) % adviceKeys.length; //生成随机数
-                          if(room)room.say(item.advice[adviceKeys[r]]); 
+                          if(room)sendText2Room(room,item.advice[adviceKeys[r]]); 
                         }                       
                       }  
                     }else if(featuredItem.itemType == "board"){//是列表board
@@ -893,7 +961,7 @@ function requestFeatureV2(topic, room) {
                       if(room && isImage(logo) )sendImage2Room(room, logo);
                       //推送描述文字
                       if(item.description && item.description.trim().length>2){
-                        if(room)room.say(item.description); 
+                        if(room)sendText2Room(room,item.description); 
                       }
                     }else{
                       console.log("unknonw item type. ignore.",item.itemType);
@@ -963,7 +1031,7 @@ async function sendGroupRead(topic, bot){
     let res = requstGroupRead(topic,room)
     try{
       if(res && res.length>0){
-        room.say(res)  
+        sendText2Room(room,res)  
         //修改推送时间戳
         config.rooms[topic].autoPushTimestamp = new Date().getTime();
       }
@@ -1081,13 +1149,13 @@ function requestGroupingArticles(topic, room) {
                         boxMsg+="\n"+config.numbers[j]+articles[j].title;
                         boxMsg+="\n👉"+articles[j].url;
                       }
-                      room.say(boxMsg);
+                      sendText2Room(room,boxMsg);
                     }
 
                     //发送报数提示
                     //sendtxt = sendtxt.replace(/__howlong/,Math.floor(res.length*15/60)>0?(""+Math.floor(res.length*15/60)):"1");
                     sendtxt = sendtxt.replace(/__howlong/,"5");
-                    room.say(sendtxt);
+                    sendText2Room(room,sendtxt);
 
                     //设置定时任务推送报告链接，默认按照timeout设置发送
                     setTimeout(function(){
@@ -1099,12 +1167,12 @@ function requestGroupingArticles(topic, room) {
                     resolve(sendtxt)
                   } else {
                     config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
-                    //room.say("⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~");
+                    //sendText2Room(room,"⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~");
                     resolve("⛔文章过少，车次取消，召集10-20人就可以发送 互阅发车 再次开始哦~~")
                   }
                 } else {
                   config.rooms[topic]=JSON.parse(JSON.stringify(config.groupingTemplate));//取消grouping，恢复默认grouping模板设置
-                  room.say("啊哦，出合集遇到问题，请直接进入列表阅读~~");
+                  sendText2Room(room,"啊哦，出合集遇到问题，请直接进入列表阅读~~");
                   resolve("啊哦，出合集遇到问题，请直接进入列表阅读~~")
                 }
           })
@@ -1141,7 +1209,7 @@ function sendGroupReport(topic, room){
   /**
   var txt = "📈点击查看报告👇\n"+config.sx_wx_api +"/s.html?s="+shortCode+"\n请在列表里查缺补漏哦~~";
   try{
-    room.say(txt);
+    sendText2Room(room, txt);
   }catch(err){
     console.log("failed send group report.",err);
   }
@@ -1201,18 +1269,18 @@ function requestGroupingResult(shortCode,topic, room){
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     sendtxt = sendtxt.replace(/Smile/g, name)
 
-                    room.say(sendtxt);
+                    sendText2Room(room, sendtxt);
                     //resolve(sendtxt)
 
                   } else {
                     console.log("no grouping results found.");
                     //resolve(txt)
-                    room.say(txt);
+                    sendText2Room(room, txt);
                   }
                 } else {
                   console.log("error occured while get grouping results.");
                   //resolve(txt);
-                  room.say(txt);
+                  sendText2Room(room, txt);
                 }
           })
   })
@@ -1252,7 +1320,7 @@ async function sendToppingRead(topic, bot){
     let res = await requestToppingRead(topic, room)
     try{
       if(res && res.length>0){
-        room.say(res) 
+        sendText2Room(room, res) 
       }
           
     }catch(err){
@@ -1332,13 +1400,13 @@ function requestToppingRead(topic,room){
                         boxMsg+="\n"+config.numbers[j]+articles[j].title;
                         boxMsg+="\n👉"+articles[j].url;
                       }
-                      room.say(boxMsg);
+                      sendText2Room(room, boxMsg);
                     }
 
                     //发送报数提示
                     //sendtxt = sendtxt.replace(/__howlong/,Math.floor(res.length*15/60)>0?(""+Math.floor(res.length*15/60)):"1");
                     //sendtxt = sendtxt.replace(/__howlong/,"5");
-                    //room.say(sendtxt);
+                    //sendText2Room(room, sendtxt);
 
                     //修改推送时间戳
                     config.rooms[topic].autoPushTimestamp = new Date().getTime();
@@ -1376,7 +1444,7 @@ async function sendPaidRead(topic, bot){
     let res = await requestPaidRead(topic)
     try{
       if(res && res.length>0){
-        room.say(res) 
+        sendText2Room(room, res) 
         //修改推送时间戳
         config.rooms[topic].autoPushTimestamp = new Date().getTime();        
       }

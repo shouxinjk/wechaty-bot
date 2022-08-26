@@ -89,7 +89,7 @@ export const onMessage = bot => {
             return;
 
           // 请求机器人接口回复
-          let res = await requestRobot(sendText,room)
+          let res = await requestRobot(bot,sendText,room)
 
           // 返回消息，并@来自人: 当前不予处理，由人工自行处理
           room.say(res, msg.talker())
@@ -158,7 +158,7 @@ export const onMessage = bot => {
             }
           }else if (msg.text().startsWith('找') && msg.text().length<20 ) {
             let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
-            let res = await requestRobot(sendText,room, null)
+            let res = await requestRobot(bot,sendText,room, null)
             msg.say(res, msg.talker())
           }          
         }
@@ -214,7 +214,7 @@ export const onMessage = bot => {
       } 
       if (msg.text().startsWith('找') && msg.text().length<20 ) {
         let sendText = msg.text().replace("找", "").replace("查", "").replace("#", "")
-        let res = await requestRobot(sendText,null,msg)
+        let res = await requestRobot(bot,sendText,null,msg)
         msg.say(res, msg.talker())
       }              
       /**
@@ -298,6 +298,33 @@ async function sendImage2Person(msg, imgUrl) {
 }
 
 /**
+ * send url info to room
+   URLInfo:
+    {
+      description: description,
+      thumbnailUrl: thumbnailUrl,
+      title: title,
+      url: url,
+    }
+ */
+async function sendUrl2Room(bot, room, urlInfo) {
+    console.log('Sending url info to room ' + room, urlInfo)
+    //发送图片
+    try{
+      let urlLink = new bot.UrlLink(urlInfo);
+      const member = await room.member({name: config.broker.nickname}) //需要确认是否在群里，如果不在就不能发
+      if(member){
+        room.say(urlLink)    
+      }else{
+        console.log("bot not in target room. skipped.");
+      }      
+    }catch(err){
+      console.log("failed send url info 2 room",err)
+    }
+
+}
+
+/**
  * @description 回复信息是关键字 “加群” 处理函数
  * @param {Object} msg 消息对象
  * @return {Promise} true-是 false-不是
@@ -347,7 +374,7 @@ async function isRoomName(bot, msg) {
  * @param {String} keywords 发送文字
  * @return {Promise} 相应内容
  */
-function requestRobot(keywords, room, msg) {
+function requestRobot(bot,keywords, room, msg) {
   console.log("try search. [keywords]",keywords);
   return new Promise((resolve, reject) => {
     let url = config.es_api
@@ -429,6 +456,7 @@ function requestRobot(keywords, room, msg) {
                     //随机组织1-3条，组成一条返回
                     let total = 1;//Math.floor(Math.random() * 3);//取1-4条随机
                     let send = "亲，找到 🎁"+keywords+"👇";//res.data.reply
+                    let urlInfo = {}; //组织URL卡片发送
                     for (let i = 0; i < res.hits.hits.length && i<total; i++) {
                       var item  = res.hits.hits[i]._source;
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
@@ -480,6 +508,11 @@ function requestRobot(keywords, room, msg) {
 
                       send += "\n\n👀更多请看👉"+moreUrl_short;
                       
+                      urlInfo.title = item.title;
+                      urlInfo.description = item.distributor.name + (item.tagging?item.tagging:"") +" "+ (item.tags?item.tags.join(" "):"");
+                      urlInfo.thumbnailUrl = item.logo?item.logo.replace(/\.avif/,""):item.images[0].replace(/\.avif/,"");
+                      urlInfo.url = url_short;
+
                       //推送图片及文字消息
                       if(room && isImage(logo))sendImage2Room(room, logo);
                       if(msg && isImage(logo))sendImage2Person(msg, logo);
@@ -517,6 +550,10 @@ function requestRobot(keywords, room, msg) {
                       }                      
 
                     }
+
+                    //随机发送URL卡片或文字：当前未启用
+                    //sendUrl2Room(bot, room, urlInfo);                    
+
                     // 免费的接口，所以需要把机器人名字替换成为自己设置的机器人名字
                     send = send.replace(/Smile/g, name)
                     resolve(send)
