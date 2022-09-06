@@ -1002,11 +1002,13 @@ function requestFeatureV2(topic, room) {
 function removeFeatureItem(eventId, brokerId, groupType, groupId, groupName,itemType, itemKey, jsonStr) {
   console.log("try to change featured item status...",eventId);
   return new Promise((resolve, reject) => {
-    let q = "insert into ilife.features values ('"+eventId+"','"+brokerId+"','"+groupType+"','"+groupId+"','"+groupName+"','"+itemType+"','"+itemKey+"','"+jsonStr+"','done',now())";
+    let q = "insert into ilife.features values ('"+eventId+"','"+brokerId+"','"+groupType+"','"+groupId+"','"+groupName+"','"+itemType+"','"+itemKey+"','"+jsonStr.replace(/'/g, "’")+"','done',now())";
     request({
-              url: config.analyze_api+"?query="+encodeURIComponent(q),
+              url: config.analyze_api+"?query=",//+encodeURIComponent(q),
               method: 'POST',
+              data: q,
               headers: {
+                "content-type": "text/plain; charset=utf-8", // 直接提交raw数据
                 "Authorization":"Basic ZGVmYXVsdDohQG1AbjA1"
               }
             },
