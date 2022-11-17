@@ -861,7 +861,7 @@ function requestFeatureV2(topic, room) {
                       console.log("failed parse json. ",res.data[0].jsonStr);
                     }
 
-                    if(featuredItem.itemType == "item"){//是单个实例
+                    if(featuredItem.itemType == "item") { //是单个实例
                       console.log("got board item.");
                       let text = item.distributor.name+" "+(item.price.currency?item.price.currency:"￥")+item.price.sale+" "+item.title;
                       //let url =  item.link.token?item.link.token:(item.link.wap2?item.link.wap2:item.link.wap);
@@ -872,7 +872,7 @@ function requestFeatureV2(topic, room) {
 
                       let url =  config.sx_wx_api+"/go.html?id="+item._key+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
 
-                      let logo = item.logo?item.logo: item.images[0]
+                      let logo = item.logo?item.logo: item.images[0];
                       let moreUrl =  config.sx_wx_api+"/index.html";
 
                       //获得短网址：单个item地址
@@ -885,7 +885,7 @@ function requestFeatureV2(topic, room) {
 
                       //获得短网址：更多items地址
                       eventId = crypto.randomUUID();
-                      itemKey = "page_"+eventId
+                      itemKey = "page_"+eventId;
                       shortCode = generateShortCode(moreUrl);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,moreUrl,shortCode);
                       //let moreUrl_short = config.sx_wx_api +"/s.html?s="+shortCode;
@@ -894,7 +894,9 @@ function requestFeatureV2(topic, room) {
                       //send += "\n"+text +" "+url_short;
 
                       send += item.distributor.name+" "+item.title; // 标题
-                      if(item.price.bid && item.price.bid>item.price.sale)send += "\n❌ 原价 " + item.price.bid+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):""); // 原价
+                      if(item.price.bid && item.price.bid>item.price.sale){
+                        send += "\n❌ 原价 " + item.price.bid+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):""); // 原价
+                      }
                       //if(item.price.coupon && item.price.coupon>0)send += "【券】" + item.price.coupon; // 优惠券
                       send += "\n✅ 售价 " + item.price.sale+(item.price.currency?(config.currency[item.price.currency]?config.currency[item.price.currency]:(" "+item.price.currency)):"");
                       if(item.link.token && item.link.token.trim().length >0){
@@ -934,8 +936,9 @@ function requestFeatureV2(topic, room) {
                           let r = Math.floor(Math.random() * 100) % adviceKeys.length; //生成随机数
                           if(room)sendText2Room(room,item.advice[adviceKeys[r]]); 
                         }                       
-                      }  
-                    }else if(featuredItem.itemType == "board"){//是列表board
+                      } 
+
+                    } else if(featuredItem.itemType == "board"){//是列表board
                       console.log("got board item.");
                       send = "✅🔥精选合集：";
                       let text = item.title;
@@ -951,6 +954,34 @@ function requestFeatureV2(topic, room) {
                       //获得短网址：单个item地址
                       let eventId = crypto.randomUUID();
                       let itemKey = "board_"+item.id;
+                      let shortCode = generateShortCode(url);
+                      saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
+                      let url_short = config.sx_wx_api2 + shortCode;
+
+                      send += "\n"+text +"\n立即前往👉"+url_short;
+                      
+                      //推送图片
+                      if(room && isImage(logo) )sendImage2Room(room, logo);
+                      //推送描述文字
+                      if(item.description && item.description.trim().length>2){
+                        if(room)sendText2Room(room,item.description); 
+                      }
+                    }else if(featuredItem.itemType == "solution"){//是定制方案solution
+                      console.log("got solution item.");
+                      send = "✅🔥分享个性化定制：";
+                      let text = item.name;
+
+                      let fromBroker = config.rooms[topic].fromBroker;//"system";//TODO 需要替换为当前达人
+                      let fromUser = "bot";//固定为机器人
+                      let channel = "wechat";
+
+                      let url =  config.sx_wx_api+"/solution.html?id="+item.id+"&fromBroker="+fromBroker+"&fromUser="+fromUser+"&from="+channel;//TODO需要添加 fromBroker信息
+
+                      let logo = item.logo;
+
+                      //获得短网址：单个item地址
+                      let eventId = crypto.randomUUID();
+                      let itemKey = "solution_"+item.id;
                       let shortCode = generateShortCode(url);
                       saveShortCode(eventId,itemKey,fromBroker,fromUser,channel,url,shortCode);
                       let url_short = config.sx_wx_api2 + shortCode;
@@ -1002,11 +1033,12 @@ function requestFeatureV2(topic, room) {
 function removeFeatureItem(eventId, brokerId, groupType, groupId, groupName,itemType, itemKey, jsonStr) {
   console.log("try to change featured item status...",eventId);
   return new Promise((resolve, reject) => {
-    let q = "insert into ilife.features values ('"+eventId+"','"+brokerId+"','"+groupType+"','"+groupId+"','"+groupName+"','"+itemType+"','"+itemKey+"','"+jsonStr.replace(/'/g, "’")+"','done',now())";
+    //let q = "insert into ilife.features values ('"+eventId+"','"+brokerId+"','"+groupType+"','"+groupId+"','"+groupName+"','"+itemType+"','"+itemKey+"','"+jsonStr+"','done',now())";
+    let q = "insert into ilife.features values ('"+eventId+"','"+brokerId+"','"+groupType+"','"+groupId+"','"+groupName+"','"+itemType+"','"+itemKey+"','{}','done',now())";
     request({
-              url: config.analyze_api+"?query=",//+encodeURIComponent(q),
-              method: 'POST',
-              data: q,
+              url: config.analyze_api+"?query="+encodeURIComponent(q),
+              method: 'post',
+              //body: q, //注意：传递text需要使用body post数据不工作，直接采用querystring参数，注意其中将jsonstr调整为空白
               headers: {
                 "content-type": "text/plain; charset=utf-8", // 直接提交raw数据
                 "Authorization":"Basic ZGVmYXVsdDohQG1AbjA1"

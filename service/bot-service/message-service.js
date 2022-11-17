@@ -407,40 +407,82 @@ function requestRobot(bot,keywords, room, msg) {
                     }
     if(keywords && keywords.trim().length>0 && keywords.trim()!='*'){
         postBody = {
-                      "from":0,
-                      "size":1,   
-                      /**   
-                      "query": {
-                        "query_string": {
-                          "query": keywords,
-                          "default_field": "full_text"
-                        }
-                      },
-                      //**/
+                      "from": 0,
+                      "size": 1,
                       "query": {
                         "bool": {
-                          "should": [{
+                          "must": [{
                             "match": {
                               "full_text": keywords
                             }
                           }],
+                          "should": [
+                                {
+                                "nested": {
+                                  "path": "meta",
+                                  "query": {
+                                    "term": {
+                                      "meta.categoryName":{
+                                        "value":keywords,
+                                        "boost": 2.1
+                                      }
+                                    }
+                                  }
+                                }
+                              },{
+                                    "match": {
+                                      "title":{
+                                        "query": keywords,
+                                        "boost": 1.3
+                                      }
+                                    }
+                              },{
+                                    "term": {
+                                      "tagging":{
+                                        "value":keywords,
+                                        "boost": 1.2
+                                      }
+                                    }
+                              },{
+                                    "term": {
+                                      "category": {
+                                        "value":keywords,
+                                        "boost": 1.7
+                                      }
+                                    }
+                              },{
+                                    "match": {
+                                      "summary":{
+                                        "query": keywords,
+                                        "boost": 1.2
+                                      }
+                                    }
+                              }
+                              ],
                           "must_not": [{
-                              "exists": { "field" : "status.inactive" }
+                            "exists": {
+                              "field": "status.inactive"
+                            }
                           }]
                         }
-                      },                        
-                      "sort": [
-                        {"_script": {
-                              "script": "Math.random()",
-                              "type": "number",
-                              "order": "asc"
-                            }
-                        },                      
-                        { "_score":   { "order": "desc" }},
-                        { "@timestamp": { "order": "desc" }}
-                      ]
-                    }      
-    }
+                      },
+                      "sort": [{
+                        "_script": {
+                          "script": "Math.random()",
+                          "type": "number",
+                          "order": "asc"
+                        }
+                      }, {
+                        "_score": {
+                          "order": "desc"
+                        }
+                      }, {
+                        "@timestamp": {
+                          "order": "desc"
+                        }
+                      }]
+                    }
+                  }
 
     request({
               url: url,
